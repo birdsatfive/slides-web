@@ -1,0 +1,88 @@
+@import "tailwindcss";
+@import "@fontsource-variable/rubik";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --fg: 56 5 39;
+  --primary: 199 40 134;
+  --primary-fg: 255 255 255;
+  --secondary: 253 236 248;
+  --bg: 245 245 245;
+  --card: 255 255 255;
+  --border: 217 217 217;
+  --accent: 253 236 248;
+  --muted: 245 245 245;
+  --muted-fg: 56 5 39;
+  --success: 90 138 102;
+  --warning: 245 158 11;
+  --error: 220 38 38;
+}
+
+.dark {
+  --fg: 232 213 224;
+  --primary: 199 40 134;
+  --primary-fg: 255 255 255;
+  --secondary: 45 31 40;
+  --bg: 15 13 16;
+  --card: 26 22 24;
+  --border: 50 40 47;
+  --accent: 45 31 40;
+  --muted: 22 19 22;
+  --muted-fg: 232 213 224;
+  --success: 120 168 132;
+  --warning: 245 158 11;
+  --error: 248 113 113;
+}
+
+@theme inline {
+  --color-background: rgb(var(--bg));
+  --color-foreground: rgb(var(--fg));
+  --color-card: rgb(var(--card));
+  --color-card-foreground: rgb(var(--fg));
+  --color-popover: rgb(var(--card));
+  --color-popover-foreground: rgb(var(--fg));
+  --color-primary: rgb(var(--primary));
+  --color-primary-foreground: rgb(var(--primary-fg));
+  --color-secondary: rgb(var(--secondary));
+  --color-secondary-foreground: rgb(var(--fg));
+  --color-muted: rgb(var(--muted));
+  --color-muted-foreground: rgb(var(--muted-fg) / 0.5);
+  --color-accent: rgb(var(--accent));
+  --color-accent-foreground: rgb(var(--fg));
+  --color-border: rgb(var(--border));
+  --color-input: rgb(var(--border));
+  --color-ring: rgb(var(--primary));
+  --color-success: rgb(var(--success));
+  --color-warning: rgb(var(--warning));
+  --color-error: rgb(var(--error));
+
+  --font-sans: "Rubik Variable", ui-sans-serif, system-ui, sans-serif;
+  --radius: 0.5rem;
+}
+
+html,
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgb(var(--bg)); border-radius: 9999px; }
+::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--fg) / 0.3); }
+
+.panel-card {
+  background: rgb(var(--card));
+  border-radius: 16px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+}
+
+.transition-smooth { transition: all 0.15s ease; }
+.transition-fast { transition: all 0.12s ease-out; }
