@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowLeft, FileText, Globe, Link2, Sparkles, Upload, Wand2 } from "lucide-react";
+import { ArrowLeft, Check, Eye, FileText, Globe, Link2, Sparkles, Upload, Wand2 } from "lucide-react";
 import { createDeck } from "@/lib/decks/actions";
+import { TemplatePreview, type TemplatePreviewSpec } from "@/components/new/TemplatePreview";
 
 type Tab = "prompt" | "markdown" | "url" | "file" | "sharepoint";
 
@@ -23,6 +24,7 @@ export interface TemplateOption {
   fg: string;
   accent: string;
   heading: string;
+  previewSpec: TemplatePreviewSpec;
 }
 
 interface Props {
@@ -36,6 +38,7 @@ export function NewDeckForm({ templates }: Props) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
+  const [previewSpec, setPreviewSpec] = useState<TemplatePreviewSpec | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -90,49 +93,63 @@ export function NewDeckForm({ templates }: Props) {
             <button
               type="button"
               onClick={() => setTemplateId(null)}
+              aria-pressed={templateId === null}
               className={
-                "text-[12px] px-2.5 py-1 rounded-md border " +
+                "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border transition-smooth " +
                 (templateId === null
-                  ? "border-[rgb(var(--primary))] text-[rgb(var(--primary))]"
-                  : "border-border text-foreground/55 hover:text-foreground")
+                  ? "bg-[rgb(var(--primary))] border-[rgb(var(--primary))] text-white font-medium shadow-[0_2px_8px_rgba(245,142,211,0.35)]"
+                  : "border-border text-foreground/55 hover:text-foreground hover:border-[rgb(var(--primary)/0.5)]")
               }
             >
+              {templateId === null && <Check className="w-3.5 h-3.5" />}
               Auto (derive from input)
             </button>
           </div>
 
           <div className="grid grid-cols-4 gap-3">
             {templates.map((t) => (
-              <button
+              <div
                 key={t.id}
-                type="button"
-                onClick={() => setTemplateId(t.id)}
                 className={
-                  "rounded-xl overflow-hidden text-left border transition-smooth " +
+                  "group relative rounded-xl overflow-hidden border transition-smooth " +
                   (templateId === t.id
                     ? "border-[rgb(var(--primary))] ring-2 ring-[rgb(var(--primary)/0.3)]"
                     : "border-border hover:border-[rgb(var(--primary)/0.4)]")
                 }
               >
-                <div
-                  className="aspect-[4/3] flex flex-col items-start justify-end p-3"
-                  style={{ background: t.bg, color: t.fg }}
+                <button
+                  type="button"
+                  onClick={() => setTemplateId(t.id)}
+                  className="block w-full text-left"
                 >
-                  <span
-                    className="inline-block w-6 h-6 rounded mb-2"
-                    style={{ background: t.accent }}
-                  />
-                  <p
-                    className="text-[15px] font-bold leading-none"
-                    style={{ fontFamily: t.heading }}
+                  <div
+                    className="aspect-[4/3] flex flex-col items-start justify-end p-3"
+                    style={{ background: t.bg, color: t.fg }}
                   >
-                    {t.name}
-                  </p>
-                </div>
-                <div className="p-3 bg-card border-t border-border">
-                  <p className="text-[11px] text-foreground/65 line-clamp-2">{t.vibe}</p>
-                </div>
-              </button>
+                    <span
+                      className="inline-block w-6 h-6 rounded mb-2"
+                      style={{ background: t.accent }}
+                    />
+                    <p
+                      className="text-[15px] font-bold leading-none"
+                      style={{ fontFamily: t.heading }}
+                    >
+                      {t.name}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-card border-t border-border">
+                    <p className="text-[11px] text-foreground/65 line-clamp-2">{t.vibe}</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewSpec(t.previewSpec)}
+                  className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-black/55 text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 backdrop-blur-sm transition-smooth hover:bg-black/75"
+                  title="Preview"
+                >
+                  <Eye className="w-3 h-3" /> Preview
+                </button>
+              </div>
             ))}
           </div>
           {templates.length === 0 && (
@@ -247,6 +264,12 @@ export function NewDeckForm({ templates }: Props) {
           </form>
         </div>
       </main>
+
+      <TemplatePreview
+        open={previewSpec !== null}
+        spec={previewSpec}
+        onClose={() => setPreviewSpec(null)}
+      />
     </div>
   );
 }
