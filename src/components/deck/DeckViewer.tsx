@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { ArrowLeft, BarChart2, RefreshCw, Sparkles, Wand2 } from "lucide-react";
 import { remixSingleSlide } from "@/lib/decks/actions";
-import { ShareControls } from "@/components/deck/ShareControls";
+import { SharePopover } from "@/components/deck/SharePopover";
+import { RegenerateButton } from "@/components/deck/RegenerateButton";
 import type { OutlineSlide } from "@/lib/api/slides";
 
 interface ShareLink {
@@ -50,31 +51,41 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto max-w-[1600px] px-6 h-14 flex items-center gap-4">
-          <a href="/" className="text-foreground/60 hover:text-foreground inline-flex items-center gap-1 text-[13px]">
+    <div className="min-h-screen flex flex-col">
+      <header className="border-b border-border bg-card shrink-0">
+        <div className="px-6 h-14 flex items-center gap-3">
+          <a href="/" className="text-foreground/60 hover:text-foreground inline-flex items-center gap-1 text-[13px] shrink-0">
             <ArrowLeft className="w-4 h-4" /> Library
           </a>
           <span className="font-medium tracking-tight truncate">{title}</span>
-          <a
-            href={`/d/${deckId}/stats`}
-            className="ml-auto px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5"
-          >
-            <BarChart2 className="w-3.5 h-3.5" /> Stats
-          </a>
-          <a
-            href={`/d/${deckId}/outline`}
-            className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Edit outline
-          </a>
+
+          <div className="ml-auto flex items-center gap-2">
+            <RegenerateButton deckId={deckId} />
+            <a
+              href={`/d/${deckId}/outline`}
+              className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5 text-foreground/80"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Edit outline
+            </a>
+            <a
+              href={`/d/${deckId}/stats`}
+              className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5 text-foreground/80"
+            >
+              <BarChart2 className="w-3.5 h-3.5" /> Stats
+            </a>
+            <SharePopover
+              deckId={deckId}
+              versionId={versionId}
+              links={shareLinks}
+              hasRender={!!htmlUrl}
+            />
+          </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1600px] grid grid-cols-[260px_1fr_320px] min-h-[calc(100vh-3.5rem)]">
+      <div className="flex-1 grid grid-cols-[240px_1fr] min-h-0">
         {/* Slide list */}
-        <aside className="border-r border-border bg-card/40 p-3 overflow-y-auto max-h-[calc(100vh-3.5rem)]">
+        <aside className="border-r border-border bg-card/40 p-3 overflow-y-auto">
           <p className="text-[10px] uppercase tracking-wider text-foreground/40 px-2 pb-2">Slides</p>
           <ol className="space-y-1">
             {slideTree.map((slide, i) => {
@@ -109,12 +120,12 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
           </ol>
         </aside>
 
-        {/* Iframe */}
-        <main className="bg-[rgb(var(--bg))] border-r border-border">
+        {/* Iframe — fills the rest */}
+        <main className="bg-[rgb(var(--bg))] min-w-0">
           {htmlUrl ? (
             <iframe
               src={htmlUrl}
-              className="w-full h-[calc(100vh-3.5rem)] border-0 bg-white"
+              className="w-full h-full border-0 bg-white"
               sandbox="allow-scripts allow-same-origin"
             />
           ) : (
@@ -122,9 +133,7 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
               <div className="panel-card p-10 max-w-md">
                 <Sparkles className="w-6 h-6 text-[rgb(var(--primary))] mb-3 mx-auto" />
                 <p className="font-medium text-foreground mb-1">Not designed yet</p>
-                <p className="mb-4">
-                  Approve the outline to render the designed deck.
-                </p>
+                <p className="mb-4">Approve the outline to render the designed deck.</p>
                 <a
                   href={`/d/${deckId}/outline`}
                   className="inline-flex px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium"
@@ -135,28 +144,15 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
             </div>
           )}
         </main>
-
-        {/* Share / export side panel */}
-        <aside className="bg-card/40 p-4 overflow-y-auto max-h-[calc(100vh-3.5rem)]">
-          <ShareControls
-            deckId={deckId}
-            versionId={versionId}
-            links={shareLinks}
-            hasRender={!!htmlUrl}
-          />
-        </aside>
       </div>
 
       {/* Remix modal */}
       {remixOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setRemixOpen(null)}
         >
-          <div
-            className="panel-card w-[520px] max-w-full p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="panel-card w-[520px] max-w-full p-5" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold mb-1">Remix this slide</h3>
             <p className="text-[12px] text-foreground/55 mb-4">
               Tell us how to change just this slide. The rest of the deck stays untouched.

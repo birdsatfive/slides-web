@@ -121,6 +121,75 @@ export async function saveOutlineEdit(deckId: string, parentVersionId: string, s
   return version.id;
 }
 
+/**
+ * Regenerate the deck: copy the current slide_tree into a NEW version row
+ * (so older renders stay browsable), then re-render. Optional `feedback`
+ * is appended to the design_spec so Claude responds to specific tweaks.
+ */
+export async function regenerateDeck(deckId: string, feedback?: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: deck, error: dErr } = await supabase
+    .schema("slides")
+    .from("decks")
+    .select("title, current_version_id, template_id, org_id")
+    .eq("id", deckId)
+    .single();
+  if (dErr || !deck) throw new Error(dErr?.message ?? "deck not found");
+  if (!deck.current_version_id) throw new Error("nothing to regenerate yet");
+
+  const { data: parent, error: pErr } = await supabase
+    .schema("slides")
+    .from("deck_versions")
+    .select("slide_tree")
+    .eq("id", deck.current_version_id)
+    .single();
+  if (pErr || !parent) throw new Error(pErr?.message ?? "parent version missing");
+
+  const { data: version, error: vErr } = await supabase
+    .schema("slides")
+    .from("deck_versions")
+    .insert({
+      deck_id: deckId,
+      parent_version_id: deck.current_version_id,
+      label: feedback?.trim() ? `Regen: ${feedback.trim().slice(0, 60)}` : "Regenerated",
+      slide_tree: parent.slide_tree as unknown as object,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (vErr || !version) throw new Error(vErr?.message);
+
+  await supabase
+    .schema("slides")
+    .from("decks")
+    .update({ current_version_id: version.id })
+    .eq("id", deckId);
+
+  let designSpec = await composeDesignSpec(supabase, deck.template_id, deck.org_id);
+  if (feedback?.trim()) {
+    designSpec = { ...(designSpec ?? {}), regenerate_feedback: feedback.trim() };
+  }
+
+  const { html_path } = await slidesApi.renderDeck({
+    deck_id: deckId,
+    version_id: version.id,
+    title: deck.title,
+    slide_tree: (parent.slide_tree as unknown as OutlineSlide[]) ?? [],
+    design_spec: designSpec,
+  });
+
+  await supabase
+    .schema("slides")
+    .from("deck_versions")
+    .update({ html_path })
+    .eq("id", version.id);
+
+  revalidatePath(`/d/${deckId}`);
+}
+
 /** Re-render an existing version (used from /d/[id]/outline after edits). */
 export async function renderDesignedDeck(deckId: string, versionId: string, title: string) {
   const supabase = await createClient();
