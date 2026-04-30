@@ -14,10 +14,11 @@ interface Deck {
 
 interface Props {
   decks: Deck[];
+  userName: string;
   userEmail: string;
 }
 
-export function LibraryView({ decks, userEmail }: Props) {
+export function LibraryView({ decks, userName, userEmail }: Props) {
   const [query, setQuery] = useState("");
 
   const filtered = decks.filter((d) =>
@@ -50,7 +51,12 @@ export function LibraryView({ decks, userEmail }: Props) {
           >
             <Palette className="w-3.5 h-3.5" /> Brand Kits
           </a>
-          <span className="text-foreground/60 text-[12px]">{userEmail}</span>
+          <span
+            className="text-foreground/65 text-[12px] truncate max-w-[180px]"
+            title={userEmail}
+          >
+            {userName || userEmail}
+          </span>
           <AppSwitcher />
         </div>
       </header>

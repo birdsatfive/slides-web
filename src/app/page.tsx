@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { LibraryView } from "@/components/library/LibraryView";
+import { displayName } from "@/lib/auth/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -16,5 +17,11 @@ export default async function HomePage() {
     .is("archived_at", null)
     .order("updated_at", { ascending: false });
 
-  return <LibraryView decks={decks ?? []} userEmail={user.email ?? ""} />;
+  return (
+    <LibraryView
+      decks={decks ?? []}
+      userName={displayName(user)}
+      userEmail={user.email ?? ""}
+    />
+  );
 }
