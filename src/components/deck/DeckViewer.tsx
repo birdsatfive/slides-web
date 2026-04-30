@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { ArrowLeft, BarChart2, RefreshCw, Sparkles, Wand2 } from "lucide-react";
 import { remixSingleSlide } from "@/lib/decks/actions";
 import { SharePopover } from "@/components/deck/SharePopover";
@@ -28,6 +28,67 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
   const [remixResult, setRemixResult] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  /**
+   * Sidebar click → scroll iframe to the matching slide. Iframe is loaded
+   * through our same-origin proxy so contentDocument is reachable. We try a
+   * few selectors because rendered decks may use either `data-slide-id` (new
+   * prompt) or numeric `data-slide`/index (older renders).
+   */
+  function gotoSlide(slideId: string, index: number) {
+    setActiveSlideId(slideId);
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return;
+    const target =
+      doc.querySelector(`[data-slide-id="${CSS.escape(slideId)}"]`) ??
+      doc.querySelector(`[data-slide="${index}"]`) ??
+      doc.querySelectorAll(".slide, section.slide, section[class*='slide']")[index] ??
+      null;
+    (target as HTMLElement | null)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  /** Track which slide is in view via IntersectionObserver inside the iframe. */
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !htmlUrl) return;
+    let cleanup: (() => void) | null = null;
+
+    function attach() {
+      const doc = iframe?.contentDocument;
+      if (!doc) return;
+      const slides = Array.from(doc.querySelectorAll<HTMLElement>(".slide, section.slide"));
+      if (slides.length === 0) return;
+      const obs = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (!e.isIntersecting) continue;
+            const el = e.target as HTMLElement;
+            const id = el.dataset.slideId;
+            if (id) {
+              setActiveSlideId(id);
+              return;
+            }
+            const idx = Number(el.dataset.slide);
+            if (!Number.isNaN(idx) && slideTree[idx]) {
+              setActiveSlideId(slideTree[idx].id);
+              return;
+            }
+          }
+        },
+        { root: doc.scrollingElement as unknown as Element | null, threshold: 0.5 },
+      );
+      slides.forEach((s) => obs.observe(s));
+      cleanup = () => obs.disconnect();
+    }
+
+    iframe.addEventListener("load", attach);
+    if (iframe.contentDocument?.readyState === "complete") attach();
+    return () => {
+      iframe.removeEventListener("load", attach);
+      cleanup?.();
+    };
+  }, [htmlUrl, slideTree]);
 
   function openRemix(slideId: string) {
     setRemixOpen(slideId);
@@ -95,7 +156,7 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
                 <li key={slide.id}>
                   <button
                     type="button"
-                    onClick={() => setActiveSlideId(slide.id)}
+                    onClick={() => gotoSlide(slide.id, i)}
                     className={
                       "w-full text-left px-2.5 py-2 rounded-lg text-[12px] transition-smooth flex items-center gap-2 group " +
                       (isActive
@@ -124,6 +185,7 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
         <main className="bg-[rgb(var(--bg))] min-w-0">
           {htmlUrl ? (
             <iframe
+              ref={iframeRef}
               src={htmlUrl}
               className="w-full h-full border-0 bg-white"
               sandbox="allow-scripts allow-same-origin"
