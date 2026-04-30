@@ -98,8 +98,11 @@ export async function createSharedFile(input: {
     contentType = "text/html; charset=utf-8";
   }
 
-  // 2) Insert deck row
-  const { data: deck, error: dErr } = await supabase
+  const svc = createServiceClient();
+
+  // 2) Insert deck row (service-role: avoids any RLS pitfall on share-only
+  //    decks; we've already verified auth above)
+  const { data: deck, error: dErr } = await svc
     .schema("slides")
     .from("decks")
     .insert({
@@ -114,7 +117,7 @@ export async function createSharedFile(input: {
   if (dErr || !deck) throw new Error(dErr?.message ?? "deck insert failed");
 
   // 3) Insert empty version (slide_tree is NOT NULL)
-  const { data: version, error: vErr } = await supabase
+  const { data: version, error: vErr } = await svc
     .schema("slides")
     .from("deck_versions")
     .insert({
@@ -128,29 +131,34 @@ export async function createSharedFile(input: {
     .single();
   if (vErr || !version) throw new Error(vErr?.message ?? "version insert failed");
 
-  // 4) Upload to storage. We keep one bucket (slides-html) — the path's
-  //    extension tells the share render route how to serve it.
+  // 4) Upload to storage. One bucket (slides-html); extension drives
+  //    serving.
   const path = `${deck.id}/${version.id}.${ext}`;
-  const svc = createServiceClient();
   const { error: upErr } = await svc.storage
     .from("slides-html")
     .upload(path, bytes, { contentType, upsert: true });
   if (upErr) throw new Error(`upload failed: ${upErr.message}`);
 
-  // 5) Patch version with html_path + deck.current_version_id
-  await supabase
+  // 5) Patch version with html_path + deck.current_version_id (atomic
+  //    via service role — earlier user-scoped UPDATE was silently
+  //    rejected by RLS in some cases, leaving html_path NULL → share
+  //    viewer 404).
+  const { error: vUpdErr } = await svc
     .schema("slides")
     .from("deck_versions")
     .update({ html_path: path })
     .eq("id", version.id);
-  await supabase
+  if (vUpdErr) throw new Error(`version update failed: ${vUpdErr.message}`);
+
+  const { error: dUpdErr } = await svc
     .schema("slides")
     .from("decks")
     .update({ current_version_id: version.id })
     .eq("id", deck.id);
+  if (dUpdErr) throw new Error(`deck update failed: ${dUpdErr.message}`);
 
   // 6) Share link
-  const { data: link, error: lErr } = await supabase
+  const { data: link, error: lErr } = await svc
     .schema("slides")
     .from("share_links")
     .insert({
