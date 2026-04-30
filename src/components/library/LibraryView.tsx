@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Presentation, Search, Sparkles } from "lucide-react";
+import { Palette, Plus, Presentation, Search, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { AppSwitcher } from "@/components/layout/AppSwitcher";
 
@@ -38,9 +38,13 @@ export function LibraryView({ decks, userEmail }: Props) {
             </div>
             <span className="font-semibold tracking-tight">Slides</span>
           </div>
-          <div className="ml-auto flex items-center gap-2 text-foreground/60 text-[12px]">
-            <span>{userEmail}</span>
-          </div>
+          <a
+            href="/brand"
+            className="ml-auto px-3 py-1.5 rounded-md text-[12px] text-foreground/65 hover:text-foreground hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5"
+          >
+            <Palette className="w-3.5 h-3.5" /> Brand Kits
+          </a>
+          <span className="text-foreground/60 text-[12px]">{userEmail}</span>
           <AppSwitcher />
         </div>
       </header>

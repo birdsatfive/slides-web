@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Eye, Clock, Users } from "lucide-react";
+import { ArrowLeft, Eye, Clock, Users, MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +40,14 @@ export default async function DeckStats({ params }: { params: Promise<{ deckId: 
   const uniqueSlides = new Set<number>();
   for (const v of views ?? []) for (const s of (v.slides_seen ?? [])) uniqueSlides.add(s);
 
+  const { data: comments } = await supabase
+    .schema("slides")
+    .from("comments")
+    .select("id, slide_id, author_name, body, created_at, resolved_at")
+    .eq("deck_id", deckId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-border bg-card">
@@ -53,10 +61,11 @@ export default async function DeckStats({ params }: { params: Promise<{ deckId: 
       </header>
 
       <main className="mx-auto max-w-[1100px] px-6 py-8">
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-4 gap-3 mb-6">
           <Stat icon={Eye} label="Sessions" value={sessions.toString()} />
           <Stat icon={Users} label="Slides explored" value={uniqueSlides.size.toString()} />
           <Stat icon={Clock} label="Avg active time" value={fmtSec(avgSeconds)} />
+          <Stat icon={MessageSquare} label="Comments" value={(comments?.length ?? 0).toString()} />
         </div>
 
         <h2 className="text-[14px] font-semibold mb-2">Recent views</h2>
@@ -86,6 +95,30 @@ export default async function DeckStats({ params }: { params: Promise<{ deckId: 
         ) : (
           <div className="panel-card p-10 text-center text-[13px] text-foreground/50">
             No views yet. Share the deck to start collecting stats.
+          </div>
+        )}
+
+        <h2 className="text-[14px] font-semibold mb-2 mt-8">Comments</h2>
+        {comments && comments.length > 0 ? (
+          <ul className="space-y-2">
+            {comments.map((c) => (
+              <li key={c.id} className="panel-card p-3">
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-[12px] font-medium">{c.author_name}</span>
+                  <span className="text-[10px] text-foreground/40">
+                    {new Date(c.created_at).toLocaleString()}
+                  </span>
+                  {c.slide_id && (
+                    <span className="text-[10px] text-foreground/40 font-mono">slide {c.slide_id}</span>
+                  )}
+                </div>
+                <p className="text-[12px] text-foreground/85 whitespace-pre-wrap">{c.body}</p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="panel-card p-6 text-center text-[12px] text-foreground/50">
+            No comments yet.
           </div>
         )}
       </main>
