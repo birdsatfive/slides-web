@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { DeckViewer } from "@/components/deck/DeckViewer";
 import type { OutlineSlide } from "@/lib/api/slides";
 
@@ -27,15 +27,10 @@ export default async function DeckPage({ params }: { params: Promise<{ deckId: s
     .single();
   if (!version) notFound();
 
-  // Sign a one-hour URL for the rendered HTML (service-role; bucket is private).
-  let signedUrl: string | null = null;
-  if (version.html_path) {
-    const svc = createServiceClient();
-    const { data: signed } = await svc.storage
-      .from("slides-html")
-      .createSignedUrl(version.html_path, 60 * 60);
-    signedUrl = signed?.signedUrl ?? null;
-  }
+  // Iframe loads through our own /api/decks/[id]/render proxy — Supabase
+  // Storage forces text/plain on download, which would render the deck as
+  // source code in the iframe.
+  const htmlUrl = version.html_path ? `/api/decks/${deck.id}/render` : null;
 
   const tree = (version.slide_tree as unknown as OutlineSlide[]) ?? [];
 
@@ -52,7 +47,7 @@ export default async function DeckPage({ params }: { params: Promise<{ deckId: s
       title={deck.title}
       versionId={version.id}
       slideTree={tree}
-      htmlUrl={signedUrl}
+      htmlUrl={htmlUrl}
       shareLinks={links ?? []}
     />
   );

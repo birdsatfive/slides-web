@@ -63,10 +63,11 @@ export default async function ShareLinkPage({
     .single();
   if (!version?.html_path) notFound();
 
-  const { data: signed } = await svc.storage.from("slides-html").createSignedUrl(version.html_path, 60 * 60);
-  if (!signed?.signedUrl) notFound();
+  // Iframe through our own proxy so Content-Type is text/html (Supabase
+  // Storage serves text/plain by default, breaking the iframe render).
+  const htmlUrl = `/api/share/${slug}/render${pw ? `?pw=${encodeURIComponent(pw)}` : ""}`;
 
-  return <ShareViewer title={title} htmlUrl={signed.signedUrl} shareLinkId={link.id} />;
+  return <ShareViewer title={title} htmlUrl={htmlUrl} shareLinkId={link.id} />;
 }
 
 function PasswordGate({ slug }: { slug: string }) {
