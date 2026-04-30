@@ -9,14 +9,12 @@ export default async function HomePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Empty for Phase 1 — real query lands once decks table is migrated.
-  const decks: Array<{
-    id: string;
-    title: string;
-    updated_at: string;
-    template_id: string | null;
-    starred: boolean;
-  }> = [];
+  const { data: decks } = await supabase
+    .schema("slides")
+    .from("decks")
+    .select("id, title, updated_at, template_id, starred")
+    .is("archived_at", null)
+    .order("updated_at", { ascending: false });
 
-  return <LibraryView decks={decks} userEmail={user.email ?? ""} />;
+  return <LibraryView decks={decks ?? []} userEmail={user.email ?? ""} />;
 }
