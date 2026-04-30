@@ -41,6 +41,12 @@ export default async function DeckPage({ params }: { params: Promise<{ deckId: s
     .eq("deck_id", deck.id)
     .order("created_at", { ascending: false });
 
+  const { data: edits } = await supabase
+    .schema("slides")
+    .from("deck_text_edits")
+    .select("slide_id, element_index, new_text")
+    .eq("version_id", version.id);
+
   return (
     <DeckViewer
       deckId={deck.id}
@@ -49,6 +55,7 @@ export default async function DeckPage({ params }: { params: Promise<{ deckId: s
       slideTree={tree}
       htmlUrl={htmlUrl}
       shareLinks={links ?? []}
+      textEdits={edits ?? []}
     />
   );
 }

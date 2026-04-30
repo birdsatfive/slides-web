@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowLeft, BarChart2, RefreshCw, Sparkles, Wand2 } from "lucide-react";
-import { remixSingleSlide } from "@/lib/decks/actions";
+import { ArrowLeft, BarChart2, Check, Loader2, Pencil, RefreshCw, Sparkles, Wand2 } from "lucide-react";
+import { remixSingleSlide, saveTextEdit } from "@/lib/decks/actions";
 import { SharePopover } from "@/components/deck/SharePopover";
 import { RegenerateButton } from "@/components/deck/RegenerateButton";
 import type { OutlineSlide } from "@/lib/api/slides";
+
+interface TextEdit {
+  slide_id: string;
+  element_index: number;
+  new_text: string;
+}
+
+const EDITABLE_SELECTOR =
+  "h1, h2, h3, h4, h5, h6, p, li, blockquote, .slide-heading, .slide-label, .slide-stat-label";
 
 interface ShareLink {
   id: string; slug: string; password_hash: string | null;
@@ -19,9 +28,12 @@ interface Props {
   slideTree: OutlineSlide[];
   htmlUrl: string | null;
   shareLinks: ShareLink[];
+  textEdits: TextEdit[];
 }
 
-export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, shareLinks }: Props) {
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, shareLinks, textEdits }: Props) {
   const [activeSlideId, setActiveSlideId] = useState<string | null>(slideTree[0]?.id ?? null);
   const [remixOpen, setRemixOpen] = useState<string | null>(null);
   const [remixPrompt, setRemixPrompt] = useState("");
@@ -29,6 +41,10 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const editModeRef = useRef(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const editsRef = useRef<TextEdit[]>(textEdits);
 
   /**
    * Sidebar click → scroll iframe to the matching slide. Iframe is loaded
@@ -59,6 +75,33 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
       if (!doc) return;
       const slides = Array.from(doc.querySelectorAll<HTMLElement>(".slide, section.slide"));
       if (slides.length === 0) return;
+
+      // Tag every editable text element with a stable index within its
+      // slide so we can persist edits keyed by (slide, index).
+      slides.forEach((slide) => {
+        const slideId =
+          slide.dataset.slideId ??
+          (typeof slide.dataset.slide === "string" && slideTree[Number(slide.dataset.slide)]?.id) ??
+          null;
+        if (!slideId) return;
+        const editable = Array.from(slide.querySelectorAll<HTMLElement>(EDITABLE_SELECTOR));
+        editable.forEach((el, idx) => {
+          el.dataset.editSlideId = slideId;
+          el.dataset.editIndex = String(idx);
+        });
+      });
+
+      // Apply persisted edits
+      for (const edit of editsRef.current) {
+        const el = doc.querySelector<HTMLElement>(
+          `[data-edit-slide-id="${CSS.escape(edit.slide_id)}"][data-edit-index="${edit.element_index}"]`,
+        );
+        if (el) el.textContent = edit.new_text;
+      }
+
+      // Wire edit mode (idempotent — applyEditMode reads editModeRef)
+      applyEditMode(doc);
+
       const obs = new IntersectionObserver(
         (entries) => {
           for (const e of entries) {
@@ -89,6 +132,80 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
       cleanup?.();
     };
   }, [htmlUrl, slideTree]);
+
+  /**
+   * Toggle contenteditable on every editable text element inside the iframe
+   * and wire blur-to-save. We capture original text on focus so we only
+   * round-trip when something actually changed.
+   */
+  function applyEditMode(doc: Document) {
+    const els = Array.from(doc.querySelectorAll<HTMLElement>("[data-edit-slide-id]"));
+    const enabled = editModeRef.current;
+    els.forEach((el) => {
+      el.contentEditable = enabled ? "true" : "false";
+      el.spellcheck = enabled;
+      el.style.outline = "none";
+      el.style.cursor = enabled ? "text" : "";
+      if (enabled) {
+        el.style.transition = "box-shadow 120ms ease";
+        el.addEventListener("focus", onFocus);
+        el.addEventListener("blur", onBlur);
+        el.addEventListener("mouseenter", onHover);
+        el.addEventListener("mouseleave", offHover);
+      } else {
+        el.style.boxShadow = "";
+        el.removeEventListener("focus", onFocus);
+        el.removeEventListener("blur", onBlur);
+        el.removeEventListener("mouseenter", onHover);
+        el.removeEventListener("mouseleave", offHover);
+      }
+    });
+  }
+
+  function onHover(e: Event) {
+    const el = e.currentTarget as HTMLElement;
+    el.style.boxShadow = "0 0 0 2px rgba(245, 142, 211, 0.45)";
+  }
+  function offHover(e: Event) {
+    const el = e.currentTarget as HTMLElement;
+    if (doc()?.activeElement !== el) el.style.boxShadow = "";
+  }
+  function onFocus(e: Event) {
+    const el = e.currentTarget as HTMLElement;
+    el.dataset.editOriginal = el.textContent ?? "";
+    el.style.boxShadow = "0 0 0 2px rgba(245, 142, 211, 0.85)";
+  }
+  function onBlur(e: Event) {
+    const el = e.currentTarget as HTMLElement;
+    el.style.boxShadow = "";
+    const original = el.dataset.editOriginal ?? "";
+    const next = (el.textContent ?? "").trim();
+    if (next === original.trim()) return;
+    const slideId = el.dataset.editSlideId;
+    const indexStr = el.dataset.editIndex;
+    if (!slideId || indexStr === undefined) return;
+    setSaveState("saving");
+    saveTextEdit(deckId, versionId, slideId, Number(indexStr), next)
+      .then(() => {
+        setSaveState("saved");
+        setTimeout(() => setSaveState((s) => (s === "saved" ? "idle" : s)), 1500);
+      })
+      .catch((err) => {
+        setSaveState("error");
+        setError(err instanceof Error ? err.message : String(err));
+      });
+  }
+  function doc(): Document | null {
+    return iframeRef.current?.contentDocument ?? null;
+  }
+
+  // Re-apply edit mode whenever the toggle flips
+  useEffect(() => {
+    editModeRef.current = editMode;
+    const d = iframeRef.current?.contentDocument;
+    if (d) applyEditMode(d);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode]);
 
   function openRemix(slideId: string) {
     setRemixOpen(slideId);
@@ -121,6 +238,20 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
           <span className="font-medium tracking-tight truncate">{title}</span>
 
           <div className="ml-auto flex items-center gap-2">
+            <SaveIndicator state={saveState} />
+            <button
+              type="button"
+              onClick={() => setEditMode((v) => !v)}
+              className={
+                "px-3 py-1.5 rounded-md text-[12px] inline-flex items-center gap-1.5 transition-smooth border " +
+                (editMode
+                  ? "bg-[rgb(var(--primary))] text-white border-[rgb(var(--primary))]"
+                  : "border-border text-foreground/80 hover:bg-[rgb(var(--fg)/0.04)]")
+              }
+              title="Toggle inline text editing"
+            >
+              <Pencil className="w-3.5 h-3.5" /> {editMode ? "Editing" : "Edit text"}
+            </button>
             <RegenerateButton deckId={deckId} />
             <a
               href={`/d/${deckId}/outline`}
@@ -208,6 +339,12 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
         </main>
       </div>
 
+      {editMode && (
+        <div className="pointer-events-none fixed bottom-4 left-1/2 -translate-x-1/2 z-40 panel-card px-3 py-1.5 text-[11px] text-foreground/65">
+          Click any text to edit. Changes save when you click away.
+        </div>
+      )}
+
       {/* Remix modal */}
       {remixOpen && (
         <div
@@ -255,4 +392,21 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
       )}
     </div>
   );
+}
+
+function SaveIndicator({ state }: { state: SaveState }) {
+  if (state === "idle") return null;
+  if (state === "saving")
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-foreground/55">
+        <Loader2 className="w-3 h-3 animate-spin" /> Saving…
+      </span>
+    );
+  if (state === "saved")
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-[rgb(var(--success))]">
+        <Check className="w-3 h-3" /> Saved
+      </span>
+    );
+  return <span className="text-[11px] text-[rgb(var(--error))]">Save failed</span>;
 }

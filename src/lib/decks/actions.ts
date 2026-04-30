@@ -238,6 +238,37 @@ export async function archiveDeck(deckId: string) {
   revalidatePath("/");
 }
 
+/**
+ * Persist an inline text edit on the rendered deck. Keyed by
+ * (version, slide, element_index) — the index is the position of the
+ * editable text element within the slide's DOM at view time.
+ *
+ * Edits are layered on top of the stored HTML at view time; we don't
+ * mutate the storage object, which keeps regenerate semantics clean.
+ */
+export async function saveTextEdit(
+  deckId: string,
+  versionId: string,
+  slideId: string,
+  elementIndex: number,
+  newText: string,
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .schema("slides")
+    .from("deck_text_edits")
+    .upsert(
+      { version_id: versionId, slide_id: slideId, element_index: elementIndex, new_text: newText, updated_at: new Date().toISOString() },
+      { onConflict: "version_id,slide_id,element_index" },
+    );
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/d/${deckId}`);
+}
+
 /** Per-slide remix. Returns the new HTML fragment; caller can splice into iframe. */
 export async function remixSingleSlide(slide: OutlineSlide, remixPrompt: string, deckId?: string, versionId?: string) {
   const { fragment } = await slidesApi.remixSlide({
