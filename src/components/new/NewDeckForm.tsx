@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { ArrowLeft, Check, Eye, FileText, Globe, Link2, Sparkles, Upload, Wand2 } from "lucide-react";
 import { createDeck } from "@/lib/decks/actions";
 import { TemplatePreview, type TemplatePreviewSpec } from "@/components/new/TemplatePreview";
+import { FileDropzone } from "@/components/new/FileDropzone";
 
 type Tab = "prompt" | "markdown" | "url" | "file" | "sharepoint";
 
@@ -205,12 +206,7 @@ export function NewDeckForm({ templates }: Props) {
               </label>
 
               {tab === "file" ? (
-                <input
-                  type="file"
-                  accept=".pptx,.pdf,.docx"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="block w-full text-[13px] text-foreground/70 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-[rgb(var(--primary)/0.1)] file:text-[rgb(var(--primary))] file:text-[12px] file:font-medium hover:file:bg-[rgb(var(--primary)/0.16)]"
-                />
+                <FileDropzone file={file} onChange={setFile} />
               ) : (
                 <textarea
                   value={text}
