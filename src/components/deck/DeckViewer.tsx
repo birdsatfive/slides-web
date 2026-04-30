@@ -41,7 +41,7 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
     if (!slide) return;
     startTransition(async () => {
       try {
-        const fragment = await remixSingleSlide(slide, remixPrompt);
+        const fragment = await remixSingleSlide(slide, remixPrompt, deckId, versionId);
         setRemixResult(fragment);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));

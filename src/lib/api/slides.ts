@@ -73,10 +73,10 @@ export const slidesApi = {
     return call<Extraction>("/v1/extract", { method: "POST", body: fd });
   },
 
-  outline: (extraction: Extraction, goal = "") =>
+  outline: (extraction: Extraction, goal = "", tagging?: { deck_id?: string; version_id?: string }) =>
     call<{ slide_tree: OutlineSlide[] }>("/v1/generate/outline", {
       method: "POST",
-      body: { extraction, goal },
+      body: { extraction, goal, ...tagging },
     }),
 
   renderDeck: (args: {
@@ -93,6 +93,7 @@ export const slidesApi = {
   remixSlide: (args: {
     slide: OutlineSlide; remix_prompt: string;
     design_spec?: Record<string, unknown>;
+    deck_id?: string; version_id?: string;
   }) =>
     call<{ fragment: string }>("/v1/generate/slide", { method: "POST", body: args }),
 

@@ -127,7 +127,12 @@ export async function renderDesignedDeck(deckId: string, versionId: string, titl
 }
 
 /** Per-slide remix. Returns the new HTML fragment; caller can splice into iframe. */
-export async function remixSingleSlide(slide: OutlineSlide, remixPrompt: string) {
-  const { fragment } = await slidesApi.remixSlide({ slide, remix_prompt: remixPrompt });
+export async function remixSingleSlide(slide: OutlineSlide, remixPrompt: string, deckId?: string, versionId?: string) {
+  const { fragment } = await slidesApi.remixSlide({
+    slide,
+    remix_prompt: remixPrompt,
+    deck_id: deckId,
+    version_id: versionId,
+  });
   return fragment;
 }
