@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowLeft, RefreshCw, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, BarChart2, RefreshCw, Sparkles, Wand2 } from "lucide-react";
 import { remixSingleSlide } from "@/lib/decks/actions";
+import { ShareControls } from "@/components/deck/ShareControls";
 import type { OutlineSlide } from "@/lib/api/slides";
+
+interface ShareLink {
+  id: string; slug: string; password_hash: string | null;
+  expires_at: string | null; revoked_at: string | null; created_at: string;
+}
 
 interface Props {
   deckId: string;
@@ -11,9 +17,10 @@ interface Props {
   versionId: string;
   slideTree: OutlineSlide[];
   htmlUrl: string | null;
+  shareLinks: ShareLink[];
 }
 
-export function DeckViewer({ deckId, title, slideTree, htmlUrl }: Props) {
+export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, shareLinks }: Props) {
   const [activeSlideId, setActiveSlideId] = useState<string | null>(slideTree[0]?.id ?? null);
   const [remixOpen, setRemixOpen] = useState<string | null>(null);
   const [remixPrompt, setRemixPrompt] = useState("");
@@ -51,15 +58,21 @@ export function DeckViewer({ deckId, title, slideTree, htmlUrl }: Props) {
           </a>
           <span className="font-medium tracking-tight truncate">{title}</span>
           <a
-            href={`/d/${deckId}/outline`}
+            href={`/d/${deckId}/stats`}
             className="ml-auto px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5"
+          >
+            <BarChart2 className="w-3.5 h-3.5" /> Stats
+          </a>
+          <a
+            href={`/d/${deckId}/outline`}
+            className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Edit outline
           </a>
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1600px] grid grid-cols-[260px_1fr] min-h-[calc(100vh-3.5rem)]">
+      <div className="mx-auto max-w-[1600px] grid grid-cols-[260px_1fr_320px] min-h-[calc(100vh-3.5rem)]">
         {/* Slide list */}
         <aside className="border-r border-border bg-card/40 p-3 overflow-y-auto max-h-[calc(100vh-3.5rem)]">
           <p className="text-[10px] uppercase tracking-wider text-foreground/40 px-2 pb-2">Slides</p>
@@ -97,7 +110,7 @@ export function DeckViewer({ deckId, title, slideTree, htmlUrl }: Props) {
         </aside>
 
         {/* Iframe */}
-        <main className="bg-[rgb(var(--bg))]">
+        <main className="bg-[rgb(var(--bg))] border-r border-border">
           {htmlUrl ? (
             <iframe
               src={htmlUrl}
@@ -122,6 +135,16 @@ export function DeckViewer({ deckId, title, slideTree, htmlUrl }: Props) {
             </div>
           )}
         </main>
+
+        {/* Share / export side panel */}
+        <aside className="bg-card/40 p-4 overflow-y-auto max-h-[calc(100vh-3.5rem)]">
+          <ShareControls
+            deckId={deckId}
+            versionId={versionId}
+            links={shareLinks}
+            hasRender={!!htmlUrl}
+          />
+        </aside>
       </div>
 
       {/* Remix modal */}
