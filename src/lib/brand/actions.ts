@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { resolveOrgId } from "@/lib/auth/org";
 
 export interface BrandKitInput {
   id?: string;
@@ -15,9 +16,7 @@ export async function saveBrandKit(input: BrandKitInput) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("not authenticated");
 
-  const orgId =
-    (user.app_metadata as Record<string, unknown> | undefined)?.org_id as string | undefined ??
-    "birdsatfive";
+  const orgId = resolveOrgId(user.app_metadata as Record<string, unknown> | undefined);
 
   if (input.id) {
     const { error } = await supabase

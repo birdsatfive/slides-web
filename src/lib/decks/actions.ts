@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveOrgId } from "@/lib/auth/org";
 import { slidesApi, type OutlineSlide } from "@/lib/api/slides";
 
 type TextSourceKind = "url" | "markdown" | "sharepoint" | "prompt";
@@ -23,9 +24,7 @@ export async function createDeck(input: CreateDeckInput) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const orgId =
-    (user.app_metadata as Record<string, unknown> | undefined)?.org_id as string | undefined ??
-    "birdsatfive";
+  const orgId = resolveOrgId(user.app_metadata as Record<string, unknown> | undefined);
 
   const extraction =
     "file" in input.source

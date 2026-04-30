@@ -1,6 +1,7 @@
 import "server-only";
 import { signSlidesApiToken } from "./jwt";
 import { createClient } from "@/lib/supabase/server";
+import { resolveOrgId } from "@/lib/auth/org";
 
 const BASE = process.env.SLIDES_API_URL || "http://localhost:8000";
 
@@ -9,11 +10,7 @@ async function currentPrincipal() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("not authenticated");
-  // Org is carried in user.app_metadata.org_id when seeded by ops; falls back
-  // to email-domain → birdsatfive bucket if missing (single-tenant for now).
-  const orgId =
-    (user.app_metadata as Record<string, unknown> | undefined)?.org_id as string | undefined ??
-    "birdsatfive";
+  const orgId = resolveOrgId(user.app_metadata as Record<string, unknown> | undefined);
   return { sub: user.id, org_id: orgId, email: user.email ?? undefined };
 }
 
