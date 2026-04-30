@@ -10,6 +10,7 @@ type TextSourceKind = "url" | "markdown" | "sharepoint" | "prompt";
 interface CreateDeckInput {
   title: string;
   goal?: string;
+  templateId?: string | null;
   source: { kind: TextSourceKind; payload: string } | { kind: "file"; file: File };
 }
 
@@ -42,6 +43,7 @@ export async function createDeck(input: CreateDeckInput) {
       title: input.title || extraction.source.ref?.slice(0, 80) || "Untitled deck",
       source_kind: extraction.source.kind,
       source_ref: extraction.source.ref,
+      template_id: input.templateId ?? null,
     })
     .select("id")
     .single();
@@ -96,25 +98,54 @@ export async function saveOutlineEdit(deckId: string, parentVersionId: string, s
   return version.id;
 }
 
-/** Run the designed deck render. Updates the version row with html_path on success. */
+/** Run the designed deck render. Looks up the deck's template + brand kit
+ * design_specs and composes them into a single payload sent to slides-api. */
 export async function renderDesignedDeck(deckId: string, versionId: string, title: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: version, error } = await supabase
-    .schema("slides")
-    .from("deck_versions")
-    .select("slide_tree")
-    .eq("id", versionId)
-    .single();
-  if (error || !version) throw new Error(error?.message);
+  const [{ data: version, error: vErr }, { data: deck, error: dErr }] = await Promise.all([
+    supabase.schema("slides").from("deck_versions").select("slide_tree").eq("id", versionId).single(),
+    supabase.schema("slides").from("decks").select("template_id, org_id").eq("id", deckId).single(),
+  ]);
+  if (vErr || !version) throw new Error(vErr?.message);
+  if (dErr || !deck) throw new Error(dErr?.message);
+
+  let designSpec: Record<string, unknown> | undefined;
+  if (deck.template_id) {
+    const { data: tpl } = await supabase
+      .schema("slides")
+      .from("templates")
+      .select("design_spec")
+      .eq("id", deck.template_id)
+      .single();
+    if (tpl?.design_spec) designSpec = tpl.design_spec as Record<string, unknown>;
+  }
+
+  // Compose org brand kit on top of template (kit wins for any matching keys).
+  if (deck.org_id) {
+    const { data: kits } = await supabase
+      .schema("slides")
+      .from("brand_kits")
+      .select("colors, fonts")
+      .eq("org_id", deck.org_id)
+      .limit(1);
+    const kit = kits?.[0];
+    if (kit) {
+      designSpec = {
+        ...(designSpec ?? {}),
+        brand_kit: { colors: kit.colors, fonts: kit.fonts },
+      };
+    }
+  }
 
   const { html_path } = await slidesApi.renderDeck({
     deck_id: deckId,
     version_id: versionId,
     title,
     slide_tree: (version.slide_tree as unknown as OutlineSlide[]) ?? [],
+    design_spec: designSpec,
   });
 
   await supabase

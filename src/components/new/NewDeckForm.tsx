@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowLeft, FileText, Globe, Link2, Sparkles, Upload } from "lucide-react";
+import { ArrowLeft, FileText, Globe, Link2, Sparkles, Upload, Wand2 } from "lucide-react";
 import { createDeck } from "@/lib/decks/actions";
 
 type Tab = "prompt" | "markdown" | "url" | "file" | "sharepoint";
@@ -14,12 +14,28 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "sharepoint", label: "SharePoint", icon: Link2, hint: "Paste a SharePoint share link." },
 ];
 
-export function NewDeckForm() {
+export interface TemplateOption {
+  id: string;
+  slug: string;
+  name: string;
+  vibe: string;
+  bg: string;
+  fg: string;
+  accent: string;
+  heading: string;
+}
+
+interface Props {
+  templates: TemplateOption[];
+}
+
+export function NewDeckForm({ templates }: Props) {
   const [tab, setTab] = useState<Tab>("prompt");
   const [title, setTitle] = useState("");
   const [goal, setGoal] = useState("");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -31,16 +47,14 @@ export function NewDeckForm() {
         if (tab === "file") {
           if (!file) { setError("Pick a file first."); return; }
           await createDeck({
-            title,
-            goal,
-            source: { kind: "file", file } as never, // server action handles File via FormData boundary
+            title, goal, templateId,
+            source: { kind: "file", file } as never,
           });
           return;
         }
         const kind = tab === "markdown" ? "markdown" : tab;
         await createDeck({
-          title,
-          goal,
+          title, goal, templateId,
           source: { kind, payload: text },
         });
       } catch (err) {
@@ -55,7 +69,7 @@ export function NewDeckForm() {
   return (
     <div className="min-h-screen bg-[rgb(var(--bg))]">
       <header className="border-b border-border bg-card">
-        <div className="mx-auto max-w-[900px] px-6 h-14 flex items-center gap-4">
+        <div className="mx-auto max-w-[1100px] px-6 h-14 flex items-center gap-4">
           <a href="/" className="text-foreground/60 hover:text-foreground inline-flex items-center gap-1 text-[13px]">
             <ArrowLeft className="w-4 h-4" /> Library
           </a>
@@ -63,9 +77,72 @@ export function NewDeckForm() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[900px] px-6 py-10">
+      <main className="mx-auto max-w-[1100px] px-6 py-10">
+        {/* Template gallery */}
+        <section className="panel-card p-6 mb-5">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-foreground/40 inline-flex items-center gap-1">
+                <Wand2 className="w-3 h-3" /> Template
+              </p>
+              <h2 className="text-[16px] font-semibold mt-0.5">Pick a starting point</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTemplateId(null)}
+              className={
+                "text-[12px] px-2.5 py-1 rounded-md border " +
+                (templateId === null
+                  ? "border-[rgb(var(--primary))] text-[rgb(var(--primary))]"
+                  : "border-border text-foreground/55 hover:text-foreground")
+              }
+            >
+              Auto (derive from input)
+            </button>
+          </div>
+
+          <div className="grid grid-cols-4 gap-3">
+            {templates.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTemplateId(t.id)}
+                className={
+                  "rounded-xl overflow-hidden text-left border transition-smooth " +
+                  (templateId === t.id
+                    ? "border-[rgb(var(--primary))] ring-2 ring-[rgb(var(--primary)/0.3)]"
+                    : "border-border hover:border-[rgb(var(--primary)/0.4)]")
+                }
+              >
+                <div
+                  className="aspect-[4/3] flex flex-col items-start justify-end p-3"
+                  style={{ background: t.bg, color: t.fg }}
+                >
+                  <span
+                    className="inline-block w-6 h-6 rounded mb-2"
+                    style={{ background: t.accent }}
+                  />
+                  <p
+                    className="text-[15px] font-bold leading-none"
+                    style={{ fontFamily: t.heading }}
+                  >
+                    {t.name}
+                  </p>
+                </div>
+                <div className="p-3 bg-card border-t border-border">
+                  <p className="text-[11px] text-foreground/65 line-clamp-2">{t.vibe}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+          {templates.length === 0 && (
+            <p className="text-[12px] text-foreground/50">No templates seeded yet.</p>
+          )}
+        </section>
+
+        {/* Source picker */}
         <div className="panel-card p-6">
-          <h1 className="text-[20px] font-semibold mb-1">Where should we start from?</h1>
+          <h1 className="text-[18px] font-semibold mb-1">Where should we start from?</h1>
           <p className="text-[13px] text-foreground/50 mb-5">
             We&apos;ll pull content from the source, plan an outline, then design the deck.
           </p>
