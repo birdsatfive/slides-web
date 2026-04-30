@@ -32,7 +32,7 @@ export function LibraryView({ decks, userEmail }: Props) {
           <div className="flex items-center gap-2">
             <div
               className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #C72886, #C72886aa)" }}
+              style={{ background: "linear-gradient(135deg, #F58ED3, #F58ED3aa)" }}
             >
               <Presentation className="w-4 h-4 text-white" strokeWidth={2.25} />
             </div>
@@ -122,7 +122,7 @@ function EmptyState() {
     <div className="panel-card p-12 flex flex-col items-center text-center">
       <div
         className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-        style={{ background: "linear-gradient(135deg, #C72886, #C7288688)" }}
+        style={{ background: "linear-gradient(135deg, #F58ED3, #F58ED388)" }}
       >
         <Sparkles className="w-6 h-6 text-white" strokeWidth={2} />
       </div>

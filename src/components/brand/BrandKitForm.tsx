@@ -17,8 +17,8 @@ interface Props {
 
 const DEFAULT_KIT: BrandKitInput = {
   name: "BirdsAtFive",
-  colors: { primary: "#C72886", accent: "#510742", fg: "#380527", bg: "#FFFFFF" },
-  fonts: { heading: "Playfair Display", body: "Inter" },
+  colors: { primary: "#F58ED3", accent: "#A33278", fg: "#380527", bg: "#FFFFFF" },
+  fonts: { heading: "Rubik", body: "Rubik" },
 };
 
 export function BrandKitForm({ kits }: Props) {

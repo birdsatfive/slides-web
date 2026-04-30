@@ -58,7 +58,7 @@ export const BAF_SERVICES: BafService[] = [
     description: "AI decks & presentations",
     url: "https://slides.birdsatfive.dk",
     icon: Presentation,
-    accent: "#C72886",
+    accent: "#F58ED3",
     self: true,
   },
   {

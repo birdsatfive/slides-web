@@ -79,9 +79,9 @@ export default function LoginPage() {
           <div className="mb-8 flex flex-col items-center">
             <div
               className="mb-3 flex h-12 w-12 items-center justify-center"
-              style={{ borderRadius: "12px", background: "rgba(199,40,134,0.12)" }}
+              style={{ borderRadius: "12px", background: "rgba(245,142,211,0.12)" }}
             >
-              <Presentation strokeWidth={2} className="text-[#C72886]" width={24} height={24} />
+              <Presentation strokeWidth={2} className="text-[#F58ED3]" width={24} height={24} />
             </div>
             <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: "#380527" }}>
               Slides
@@ -119,7 +119,7 @@ export default function LoginPage() {
               transition: "all 150ms ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#C72886";
+              e.currentTarget.style.background = "#F58ED3";
               e.currentTarget.style.color = "#fff";
             }}
             onMouseLeave={(e) => {

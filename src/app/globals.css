@@ -3,32 +3,34 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Aligned with Birdie Design System (birdie-redesign/design-catalog.html).
+   Primary pink #F58ED3; foreground deep purple #380527; Rubik throughout. */
 :root {
-  --fg: 56 5 39;
-  --primary: 199 40 134;
+  --fg: 56 5 39;            /* #380527 deep purple */
+  --primary: 245 142 211;   /* #F58ED3 Birdie pink */
   --primary-fg: 255 255 255;
-  --secondary: 253 236 248;
-  --bg: 245 245 245;
+  --secondary: 253 236 248; /* #FDECF8 light pink */
+  --bg: 245 245 245;        /* #F5F5F5 */
   --card: 255 255 255;
-  --border: 217 217 217;
+  --border: 217 217 217;    /* #D9D9D9 */
   --accent: 253 236 248;
   --muted: 245 245 245;
   --muted-fg: 56 5 39;
-  --success: 90 138 102;
+  --success: 90 138 102;    /* #5a8a66 */
   --warning: 245 158 11;
-  --error: 220 38 38;
+  --error: 220 38 38;       /* #dc2626 */
 }
 
 .dark {
-  --fg: 232 213 224;
-  --primary: 199 40 134;
+  --fg: 232 213 224;        /* #E8D5E0 */
+  --primary: 245 142 211;
   --primary-fg: 255 255 255;
-  --secondary: 45 31 40;
-  --bg: 15 13 16;
-  --card: 26 22 24;
-  --border: 50 40 47;
+  --secondary: 45 31 40;    /* #2D1F28 */
+  --bg: 15 13 16;           /* #0F0D10 */
+  --card: 26 22 24;         /* #1A1618 */
+  --border: 50 40 47;       /* #32282F */
   --accent: 45 31 40;
-  --muted: 22 19 22;
+  --muted: 22 19 22;        /* #161316 */
   --muted-fg: 232 213 224;
   --success: 120 168 132;
   --warning: 245 158 11;
