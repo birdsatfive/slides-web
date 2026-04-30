@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Eye, FileText, Globe, Link2, Sparkles, Upload, Wand2 
 import { createDeck } from "@/lib/decks/actions";
 import { TemplatePreview, type TemplatePreviewSpec } from "@/components/new/TemplatePreview";
 import { FileDropzone } from "@/components/new/FileDropzone";
+import { GenerationOverlay } from "@/components/new/GenerationOverlay";
 
 type Tab = "prompt" | "markdown" | "url" | "file" | "sharepoint";
 
@@ -266,6 +267,12 @@ export function NewDeckForm({ templates }: Props) {
         open={previewSpec !== null}
         spec={previewSpec}
         onClose={() => setPreviewSpec(null)}
+      />
+
+      <GenerationOverlay
+        open={pending}
+        templateName={templates.find((t) => t.id === templateId)?.name ?? "Auto"}
+        deckTitle={title || (tab === "prompt" ? "From prompt" : tab === "url" ? text : tab === "file" ? file?.name : "Your deck")}
       />
     </div>
   );
