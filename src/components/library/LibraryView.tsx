@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Clock, DollarSign, Eye, Palette, Plus, Presentation, Search, Share2, Sparkles, Trash2 } from "lucide-react";
+import { ArrowRight, Clock, DollarSign, Eye, Palette, Plus, Presentation, Search, Share2, Sparkles, Trash2, Upload } from "lucide-react";
 import { useState, useTransition } from "react";
 import { AppSwitcher } from "@/components/layout/AppSwitcher";
 import { archiveDeck } from "@/lib/decks/actions";
@@ -63,13 +63,23 @@ export function LibraryView({ decks, userName, userEmail }: Props) {
               Your team&apos;s decks. Create from a prompt, a doc, or a URL.
             </p>
           </div>
-          <a
-            href="/new"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium transition-smooth hover:opacity-90"
-          >
-            <Plus className="w-4 h-4" />
-            New deck
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href="/share/new"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-[13px] font-medium transition-smooth hover:bg-[rgb(var(--fg)/0.04)]"
+              title="Upload an existing file and get a share link"
+            >
+              <Upload className="w-4 h-4" />
+              Share a file
+            </a>
+            <a
+              href="/new"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium transition-smooth hover:opacity-90"
+            >
+              <Plus className="w-4 h-4" />
+              New deck
+            </a>
+          </div>
         </div>
 
         <div className="relative mb-5">

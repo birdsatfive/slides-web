@@ -34,6 +34,7 @@ interface Props {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, shareLinks, textEdits }: Props) {
+  const shareOnly = slideTree.length === 0;
   const [activeSlideId, setActiveSlideId] = useState<string | null>(slideTree[0]?.id ?? null);
   const [remixOpen, setRemixOpen] = useState<string | null>(null);
   const [remixPrompt, setRemixPrompt] = useState("");
@@ -238,27 +239,31 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
           <span className="font-medium tracking-tight truncate">{title}</span>
 
           <div className="ml-auto flex items-center gap-2">
-            <SaveIndicator state={saveState} />
-            <button
-              type="button"
-              onClick={() => setEditMode((v) => !v)}
-              className={
-                "px-3 py-1.5 rounded-md text-[12px] inline-flex items-center gap-1.5 transition-smooth border " +
-                (editMode
-                  ? "bg-[rgb(var(--primary))] text-white border-[rgb(var(--primary))]"
-                  : "border-border text-foreground/80 hover:bg-[rgb(var(--fg)/0.04)]")
-              }
-              title="Toggle inline text editing"
-            >
-              <Pencil className="w-3.5 h-3.5" /> {editMode ? "Editing" : "Edit text"}
-            </button>
-            <RegenerateButton deckId={deckId} />
-            <a
-              href={`/d/${deckId}/outline`}
-              className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5 text-foreground/80"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Edit outline
-            </a>
+            {!shareOnly && <SaveIndicator state={saveState} />}
+            {!shareOnly && (
+              <button
+                type="button"
+                onClick={() => setEditMode((v) => !v)}
+                className={
+                  "px-3 py-1.5 rounded-md text-[12px] inline-flex items-center gap-1.5 transition-smooth border " +
+                  (editMode
+                    ? "bg-[rgb(var(--primary))] text-white border-[rgb(var(--primary))]"
+                    : "border-border text-foreground/80 hover:bg-[rgb(var(--fg)/0.04)]")
+                }
+                title="Toggle inline text editing"
+              >
+                <Pencil className="w-3.5 h-3.5" /> {editMode ? "Editing" : "Edit text"}
+              </button>
+            )}
+            {!shareOnly && <RegenerateButton deckId={deckId} />}
+            {!shareOnly && (
+              <a
+                href={`/d/${deckId}/outline`}
+                className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5 text-foreground/80"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Edit outline
+              </a>
+            )}
             <a
               href={`/d/${deckId}/stats`}
               className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5 text-foreground/80"
@@ -275,8 +280,9 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
         </div>
       </header>
 
-      <div className="flex-1 grid grid-cols-[240px_1fr] min-h-0">
-        {/* Slide list */}
+      <div className={"flex-1 grid min-h-0 " + (shareOnly ? "grid-cols-[1fr]" : "grid-cols-[240px_1fr]")}>
+        {/* Slide list — hidden for share-only uploads */}
+        {!shareOnly && (
         <aside className="border-r border-border bg-card/40 p-3 overflow-y-auto">
           <p className="text-[10px] uppercase tracking-wider text-foreground/40 px-2 pb-2">Slides</p>
           <ol className="space-y-1">
@@ -311,6 +317,7 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
             })}
           </ol>
         </aside>
+        )}
 
         {/* Iframe — fills the rest */}
         <main className="bg-[rgb(var(--bg))] min-w-0">

@@ -58,6 +58,17 @@ export async function GET(
     .single();
   if (!version?.html_path) return NextResponse.json({ error: "not designed" }, { status: 404 });
 
+  // Share-only PDFs: emit a tiny HTML wrapper that embeds the PDF via the
+  // sibling /asset route. Same auth (slug + pw) gates both endpoints.
+  if (version.html_path.endsWith(".pdf")) {
+    const assetUrl = `/api/share/${slug}/asset${pw ? `?pw=${encodeURIComponent(pw)}` : ""}`;
+    const wrapper = pdfWrapperHtml(assetUrl);
+    return new NextResponse(wrapper, {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=60" },
+    });
+  }
+
   const { data: blob, error } = await svc.storage.from("slides-html").download(version.html_path);
   if (error || !blob) {
     return NextResponse.json({ error: error?.message ?? "download failed" }, { status: 502 });
@@ -81,6 +92,13 @@ export async function GET(
       "Cache-Control": "public, max-age=60",
     },
   });
+}
+
+function pdfWrapperHtml(src: string): string {
+  return `<!doctype html>
+<html><head><meta charset="utf-8"><title>Shared PDF</title>
+<style>html,body{margin:0;height:100%;background:#0f0d10}embed,iframe{width:100%;height:100%;border:0;display:block}</style>
+</head><body><embed src="${src}" type="application/pdf"></body></html>`;
 }
 
 /**

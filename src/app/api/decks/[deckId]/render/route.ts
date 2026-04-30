@@ -43,6 +43,17 @@ export async function GET(
   }
 
   const svc = createServiceClient();
+
+  if (version.html_path.endsWith(".pdf")) {
+    const wrapper = `<!doctype html><html><head><meta charset="utf-8"><title>PDF</title>
+<style>html,body{margin:0;height:100%;background:#0f0d10}embed{width:100%;height:100%;border:0;display:block}</style>
+</head><body><embed src="/api/decks/${deckId}/asset" type="application/pdf"></body></html>`;
+    return new NextResponse(wrapper, {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, max-age=60" },
+    });
+  }
+
   const { data: blob, error } = await svc.storage.from("slides-html").download(version.html_path);
   if (error || !blob) {
     return NextResponse.json({ error: error?.message ?? "storage download failed" }, { status: 502 });
