@@ -252,9 +252,10 @@ export function NewDeckForm({ templates }: Props) {
               <button
                 type="submit"
                 disabled={pending}
-                className="px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium transition-smooth hover:opacity-90 disabled:opacity-60"
+                className="px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium transition-smooth hover:opacity-90 disabled:opacity-60 inline-flex items-center gap-1.5"
               >
-                {pending ? "Planning…" : "Plan outline"}
+                <Sparkles className="w-3.5 h-3.5" />
+                {pending ? "Generating…" : "Generate deck"}
               </button>
             </div>
           </form>

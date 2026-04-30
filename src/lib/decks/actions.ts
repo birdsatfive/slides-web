@@ -16,8 +16,9 @@ interface CreateDeckInput {
 }
 
 /**
- * Phase-3 happy-path: extract → outline → insert deck + initial version → redirect to outline review.
- * The designed render is deferred until the user approves the outline (saves cost).
+ * Single-shot create: extract → outline → insert deck/version → designed
+ * render → land on viewer. Outline editing is still available from
+ * /d/[id]/outline but is not part of the default flow.
  */
 export async function createDeck(input: CreateDeckInput) {
   const supabase = await createClient();
@@ -26,34 +27,39 @@ export async function createDeck(input: CreateDeckInput) {
 
   const orgId = resolveOrgId(user.app_metadata as Record<string, unknown> | undefined);
 
+  // 1) Extract from chosen source
   const extraction =
     "file" in input.source
       ? await slidesApi.extractFile(input.source.file)
       : await slidesApi.extractText(input.source.kind, input.source.payload);
 
+  // 2) Plan outline (Haiku)
   const { slide_tree } = await slidesApi.outline(extraction, input.goal || "");
 
+  // 3) Insert deck
+  const finalTitle = input.title || extraction.source.ref?.slice(0, 80) || "Untitled deck";
   const { data: deck, error: deckErr } = await supabase
     .schema("slides")
     .from("decks")
     .insert({
       org_id: orgId,
       owner_id: user.id,
-      title: input.title || extraction.source.ref?.slice(0, 80) || "Untitled deck",
+      title: finalTitle,
       source_kind: extraction.source.kind,
       source_ref: extraction.source.ref,
       template_id: input.templateId ?? null,
     })
-    .select("id")
+    .select("id, template_id")
     .single();
   if (deckErr || !deck) throw new Error(`deck insert failed: ${deckErr?.message}`);
 
+  // 4) Insert version
   const { data: version, error: verErr } = await supabase
     .schema("slides")
     .from("deck_versions")
     .insert({
       deck_id: deck.id,
-      label: "Initial outline",
+      label: "Initial",
       slide_tree: slide_tree as unknown as object,
       generation_meta: { source: extraction.source, goal: input.goal ?? "" },
       created_by: user.id,
@@ -68,8 +74,26 @@ export async function createDeck(input: CreateDeckInput) {
     .update({ current_version_id: version.id })
     .eq("id", deck.id);
 
+  // 5) Resolve template + brand kit → design_spec
+  const designSpec = await composeDesignSpec(supabase, deck.template_id, orgId);
+
+  // 6) Designed render (Opus)
+  const { html_path } = await slidesApi.renderDeck({
+    deck_id: deck.id,
+    version_id: version.id,
+    title: finalTitle,
+    slide_tree,
+    design_spec: designSpec,
+  });
+
+  await supabase
+    .schema("slides")
+    .from("deck_versions")
+    .update({ html_path })
+    .eq("id", version.id);
+
   revalidatePath("/");
-  redirect(`/d/${deck.id}/outline`);
+  redirect(`/d/${deck.id}`);
 }
 
 /** Mutate the slide_tree on a version (inline edits, reorder). Creates a new version row. */
@@ -97,8 +121,7 @@ export async function saveOutlineEdit(deckId: string, parentVersionId: string, s
   return version.id;
 }
 
-/** Run the designed deck render. Looks up the deck's template + brand kit
- * design_specs and composes them into a single payload sent to slides-api. */
+/** Re-render an existing version (used from /d/[id]/outline after edits). */
 export async function renderDesignedDeck(deckId: string, versionId: string, title: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -111,33 +134,7 @@ export async function renderDesignedDeck(deckId: string, versionId: string, titl
   if (vErr || !version) throw new Error(vErr?.message);
   if (dErr || !deck) throw new Error(dErr?.message);
 
-  let designSpec: Record<string, unknown> | undefined;
-  if (deck.template_id) {
-    const { data: tpl } = await supabase
-      .schema("slides")
-      .from("templates")
-      .select("design_spec")
-      .eq("id", deck.template_id)
-      .single();
-    if (tpl?.design_spec) designSpec = tpl.design_spec as Record<string, unknown>;
-  }
-
-  // Compose org brand kit on top of template (kit wins for any matching keys).
-  if (deck.org_id) {
-    const { data: kits } = await supabase
-      .schema("slides")
-      .from("brand_kits")
-      .select("colors, fonts")
-      .eq("org_id", deck.org_id)
-      .limit(1);
-    const kit = kits?.[0];
-    if (kit) {
-      designSpec = {
-        ...(designSpec ?? {}),
-        brand_kit: { colors: kit.colors, fonts: kit.fonts },
-      };
-    }
-  }
+  const designSpec = await composeDesignSpec(supabase, deck.template_id, deck.org_id);
 
   const { html_path } = await slidesApi.renderDeck({
     deck_id: deckId,
@@ -156,6 +153,22 @@ export async function renderDesignedDeck(deckId: string, versionId: string, titl
   revalidatePath(`/d/${deckId}`);
 }
 
+/** Soft-delete: set archived_at. Library filters them out by default. */
+export async function archiveDeck(deckId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .schema("slides")
+    .from("decks")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", deckId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+}
+
 /** Per-slide remix. Returns the new HTML fragment; caller can splice into iframe. */
 export async function remixSingleSlide(slide: OutlineSlide, remixPrompt: string, deckId?: string, versionId?: string) {
   const { fragment } = await slidesApi.remixSlide({
@@ -165,4 +178,41 @@ export async function remixSingleSlide(slide: OutlineSlide, remixPrompt: string,
     version_id: versionId,
   });
   return fragment;
+}
+
+// ── helpers ─────────────────────────────────────────────────────────────
+
+type Sb = Awaited<ReturnType<typeof createClient>>;
+
+async function composeDesignSpec(
+  supabase: Sb,
+  templateId: string | null | undefined,
+  orgId: string | null | undefined,
+): Promise<Record<string, unknown> | undefined> {
+  let spec: Record<string, unknown> | undefined;
+
+  if (templateId) {
+    const { data: tpl } = await supabase
+      .schema("slides")
+      .from("templates")
+      .select("design_spec")
+      .eq("id", templateId)
+      .single();
+    if (tpl?.design_spec) spec = tpl.design_spec as Record<string, unknown>;
+  }
+
+  if (orgId) {
+    const { data: kits } = await supabase
+      .schema("slides")
+      .from("brand_kits")
+      .select("colors, fonts")
+      .eq("org_id", orgId)
+      .limit(1);
+    const kit = kits?.[0];
+    if (kit) {
+      spec = { ...(spec ?? {}), brand_kit: { colors: kit.colors, fonts: kit.fonts } };
+    }
+  }
+
+  return spec;
 }

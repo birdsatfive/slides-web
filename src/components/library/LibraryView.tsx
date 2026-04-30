@@ -1,8 +1,9 @@
 "use client";
 
-import { DollarSign, Palette, Plus, Presentation, Search, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { DollarSign, Palette, Plus, Presentation, Search, Sparkles, Trash2 } from "lucide-react";
+import { useState, useTransition } from "react";
 import { AppSwitcher } from "@/components/layout/AppSwitcher";
+import { archiveDeck } from "@/lib/decks/actions";
 
 interface Deck {
   id: string;
@@ -107,19 +108,49 @@ export function LibraryView({ decks, userName, userEmail }: Props) {
 }
 
 function DeckCard({ deck }: { deck: Deck }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function onDelete(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Delete "${deck.title}"? You can restore from the archive.`)) return;
+    start(async () => {
+      try {
+        await archiveDeck(deck.id);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    });
+  }
+
   return (
-    <a
-      href={`/d/${deck.id}`}
-      className="panel-card overflow-hidden group transition-smooth hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
-    >
-      <div className="aspect-video bg-[rgb(var(--muted))] border-b border-border" />
-      <div className="p-3">
-        <p className="text-[13px] font-medium truncate">{deck.title}</p>
-        <p className="text-[11px] text-foreground/40 mt-0.5">
-          {new Date(deck.updated_at).toLocaleDateString()}
-        </p>
-      </div>
-    </a>
+    <div className="relative group">
+      <a
+        href={`/d/${deck.id}`}
+        className="block panel-card overflow-hidden transition-smooth hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+      >
+        <div className="aspect-video bg-[rgb(var(--muted))] border-b border-border" />
+        <div className="p-3">
+          <p className="text-[13px] font-medium truncate">{deck.title}</p>
+          <p className="text-[11px] text-foreground/40 mt-0.5">
+            {new Date(deck.updated_at).toLocaleDateString()}
+          </p>
+        </div>
+      </a>
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={pending}
+        title="Delete deck"
+        className="absolute top-2 right-2 w-8 h-8 rounded-md flex items-center justify-center bg-black/55 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-smooth hover:bg-[rgb(var(--error))] disabled:opacity-60"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+      {error && (
+        <p className="absolute -bottom-5 left-0 right-0 text-center text-[10px] text-[rgb(var(--error))]">{error}</p>
+      )}
+    </div>
   );
 }
 
