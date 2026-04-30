@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { CommentsPanel } from "@/components/share/CommentsPanel";
 
 interface Props {
   title: string;
@@ -14,6 +15,8 @@ interface Props {
  */
 export function ShareViewer({ title, htmlUrl, shareLinkId }: Props) {
   const sessionRef = useRef<string>("");
+  const [activeSlideId, setActiveSlideId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string>("");
 
   useEffect(() => {
     if (!sessionRef.current) {
@@ -21,6 +24,7 @@ export function ShareViewer({ title, htmlUrl, shareLinkId }: Props) {
         ? crypto.randomUUID()
         : Math.random().toString(36).slice(2);
     }
+    setSessionId(sessionRef.current);
     const sessionId = sessionRef.current;
     let active = true;
     let elapsed = 0;
@@ -46,6 +50,7 @@ export function ShareViewer({ title, htmlUrl, shareLinkId }: Props) {
       // Generated decks dispatch slide-change events on hashchange — listen if iframe posts them.
       if (ev.data && typeof ev.data === "object" && ev.data.type === "slide-change") {
         lastSlide = Number(ev.data.slide);
+        if (typeof ev.data.slide_id === "string") setActiveSlideId(ev.data.slide_id);
         send({ event: "slide", slide: lastSlide });
       }
     }
@@ -67,6 +72,13 @@ export function ShareViewer({ title, htmlUrl, shareLinkId }: Props) {
         className="w-full h-full border-0"
         sandbox="allow-scripts allow-same-origin"
       />
+      {sessionId && (
+        <CommentsPanel
+          shareLinkId={shareLinkId}
+          activeSlideId={activeSlideId}
+          sessionId={sessionId}
+        />
+      )}
     </div>
   );
 }
