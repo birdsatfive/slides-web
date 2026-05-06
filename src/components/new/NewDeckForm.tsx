@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowLeft, Check, Eye, FileText, Globe, Link2, Sparkles, Upload, Wand2 } from "lucide-react";
+import { ArrowLeft, Check, Eye, FileText, Globe, Layout, Link2, Lock, PencilLine, Sparkles, Upload, Wand2 } from "lucide-react";
 import { createDeck } from "@/lib/decks/actions";
+import type { Fidelity } from "@/lib/api/slides";
 import { TemplatePreview, type TemplatePreviewSpec } from "@/components/new/TemplatePreview";
 import { FileDropzone } from "@/components/new/FileDropzone";
 import { GenerationOverlay } from "@/components/new/GenerationOverlay";
@@ -15,6 +16,32 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: st
   { id: "url", label: "URL", icon: Globe, hint: "Article, landing page, doc." },
   { id: "file", label: "Upload", icon: Upload, hint: "PPTX, PDF, DOCX." },
   { id: "sharepoint", label: "SharePoint", icon: Link2, hint: "Paste a SharePoint share link." },
+];
+
+const FIDELITY_OPTIONS: {
+  id: Fidelity;
+  label: string;
+  hint: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  {
+    id: "strict",
+    label: "Match source exactly",
+    hint: "Preserve every block, verbatim. Just design and style.",
+    icon: Lock,
+  },
+  {
+    id: "redesign",
+    label: "Redesign layouts",
+    hint: "Keep all content; pick the best layout per slide.",
+    icon: Layout,
+  },
+  {
+    id: "rewrite",
+    label: "Rewrite for impact",
+    hint: "Let AI compress, reorder, and re-narrate freely.",
+    icon: PencilLine,
+  },
 ];
 
 export interface TemplateOption {
@@ -39,6 +66,7 @@ export function NewDeckForm({ templates }: Props) {
   const [goal, setGoal] = useState("");
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [fidelity, setFidelity] = useState<Fidelity>("redesign");
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [previewSpec, setPreviewSpec] = useState<TemplatePreviewSpec | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,17 +77,20 @@ export function NewDeckForm({ templates }: Props) {
     setError(null);
     startTransition(async () => {
       try {
+        // Prompt-source decks have no source content to be faithful to —
+        // force rewrite mode so the planner does its full job.
+        const effectiveFidelity: Fidelity = tab === "prompt" ? "rewrite" : fidelity;
         if (tab === "file") {
           if (!file) { setError("Pick a file first."); return; }
           await createDeck({
-            title, goal, templateId,
+            title, goal, templateId, fidelity: effectiveFidelity,
             source: { kind: "file", file } as never,
           });
           return;
         }
         const kind = tab === "markdown" ? "markdown" : tab;
         await createDeck({
-          title, goal, templateId,
+          title, goal, templateId, fidelity: effectiveFidelity,
           source: { kind, payload: text },
         });
       } catch (err) {
@@ -239,6 +270,49 @@ export function NewDeckForm({ templates }: Props) {
                 Helps the planner decide tone and structure.
               </p>
             </div>
+
+            {tab !== "prompt" && (
+              <div>
+                <label className="block text-[12px] text-foreground/60 mb-1.5">
+                  Source fidelity
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {FIDELITY_OPTIONS.map((opt) => {
+                    const Icon = opt.icon;
+                    const isActive = fidelity === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setFidelity(opt.id)}
+                        aria-pressed={isActive}
+                        className={
+                          "text-left rounded-lg border p-3 transition-smooth " +
+                          (isActive
+                            ? "border-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.06)] ring-1 ring-[rgb(var(--primary)/0.3)]"
+                            : "border-border hover:border-[rgb(var(--primary)/0.4)]")
+                        }
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon className={"w-3.5 h-3.5 " + (isActive ? "text-[rgb(var(--primary))]" : "text-foreground/55")} />
+                          <span className={"text-[12px] font-medium " + (isActive ? "text-foreground" : "text-foreground/75")}>
+                            {opt.label}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-foreground/50 leading-snug">{opt.hint}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-foreground/40 mt-1.5">
+                  {fidelity === "strict"
+                    ? "Strict mode skips the AI planner — every block is rendered verbatim, AI only designs."
+                    : fidelity === "redesign"
+                    ? "Default. Content is preserved; AI picks the best layout per slide."
+                    : "AI may compress, drop, or rewrite to sharpen the narrative."}
+                </p>
+              </div>
+            )}
 
             {error && (
               <div className="text-[12px] px-3 py-2 rounded-lg bg-[rgb(var(--error)/0.08)] border border-[rgb(var(--error)/0.2)] text-[rgb(var(--error))]">

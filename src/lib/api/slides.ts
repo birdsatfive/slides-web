@@ -32,7 +32,14 @@ export interface Extraction {
 }
 
 export interface SlideBlock { id: string; kind: string; content: unknown }
-export interface OutlineSlide { id: string; type: string; blocks: SlideBlock[] }
+export interface OutlineSlide { id: string; type: string; blocks: SlideBlock[]; source_meta?: Record<string, unknown> }
+
+/** How faithfully to reproduce the source content.
+ *  - strict:   1:1 — every block preserved verbatim, no LLM planner
+ *  - redesign: layouts may change but no content drops (default)
+ *  - rewrite:  AI may compress, reorder, paraphrase for impact
+ */
+export type Fidelity = "strict" | "redesign" | "rewrite";
 
 async function call<T>(
   path: string,
@@ -70,10 +77,15 @@ export const slidesApi = {
     return call<Extraction>("/v1/extract", { method: "POST", body: fd });
   },
 
-  outline: (extraction: Extraction, goal = "", tagging?: { deck_id?: string; version_id?: string }) =>
+  outline: (
+    extraction: Extraction,
+    goal = "",
+    fidelity: Fidelity = "redesign",
+    tagging?: { deck_id?: string; version_id?: string },
+  ) =>
     call<{ slide_tree: OutlineSlide[] }>("/v1/generate/outline", {
       method: "POST",
-      body: { extraction, goal, ...tagging },
+      body: { extraction, goal, fidelity, ...tagging },
     }),
 
   renderDeck: (args: {
@@ -81,6 +93,7 @@ export const slidesApi = {
     slide_tree: OutlineSlide[];
     design_spec?: Record<string, unknown>;
     screenshot_urls?: string[];
+    fidelity?: Fidelity;
   }) =>
     call<{ html_path: string; bytes: number }>("/v1/generate/deck", {
       method: "POST",

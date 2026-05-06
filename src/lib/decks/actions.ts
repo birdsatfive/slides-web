@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveOrgId } from "@/lib/auth/org";
-import { slidesApi, type OutlineSlide } from "@/lib/api/slides";
+import { slidesApi, type Fidelity, type OutlineSlide } from "@/lib/api/slides";
 
 type TextSourceKind = "url" | "markdown" | "sharepoint" | "prompt";
 
@@ -12,6 +12,7 @@ interface CreateDeckInput {
   title: string;
   goal?: string;
   templateId?: string | null;
+  fidelity?: Fidelity;
   source: { kind: TextSourceKind; payload: string } | { kind: "file"; file: File };
 }
 
@@ -26,6 +27,7 @@ export async function createDeck(input: CreateDeckInput) {
   if (!user) redirect("/login");
 
   const orgId = resolveOrgId(user.app_metadata as Record<string, unknown> | undefined);
+  const fidelity: Fidelity = input.fidelity ?? "redesign";
 
   // 1) Extract from chosen source
   const extraction =
@@ -33,8 +35,8 @@ export async function createDeck(input: CreateDeckInput) {
       ? await slidesApi.extractFile(input.source.file)
       : await slidesApi.extractText(input.source.kind, input.source.payload);
 
-  // 2) Plan outline (Haiku)
-  const { slide_tree } = await slidesApi.outline(extraction, input.goal || "");
+  // 2) Plan outline (Haiku) — strict mode skips the LLM and goes 1:1
+  const { slide_tree } = await slidesApi.outline(extraction, input.goal || "", fidelity);
 
   // 3) Insert deck
   const finalTitle = input.title || extraction.source.ref?.slice(0, 80) || "Untitled deck";
@@ -61,7 +63,7 @@ export async function createDeck(input: CreateDeckInput) {
       deck_id: deck.id,
       label: "Initial",
       slide_tree: slide_tree as unknown as object,
-      generation_meta: { source: extraction.source, goal: input.goal ?? "" },
+      generation_meta: { source: extraction.source, goal: input.goal ?? "", fidelity },
       created_by: user.id,
     })
     .select("id")
@@ -84,6 +86,7 @@ export async function createDeck(input: CreateDeckInput) {
     title: finalTitle,
     slide_tree,
     design_spec: designSpec,
+    fidelity,
   });
 
   await supabase
@@ -143,10 +146,13 @@ export async function regenerateDeck(deckId: string, feedback?: string) {
   const { data: parent, error: pErr } = await supabase
     .schema("slides")
     .from("deck_versions")
-    .select("slide_tree")
+    .select("slide_tree, generation_meta")
     .eq("id", deck.current_version_id)
     .single();
   if (pErr || !parent) throw new Error(pErr?.message ?? "parent version missing");
+
+  const parentMeta = (parent.generation_meta ?? {}) as Record<string, unknown>;
+  const fidelity = (parentMeta.fidelity as Fidelity | undefined) ?? "redesign";
 
   const { data: version, error: vErr } = await supabase
     .schema("slides")
@@ -156,6 +162,7 @@ export async function regenerateDeck(deckId: string, feedback?: string) {
       parent_version_id: deck.current_version_id,
       label: feedback?.trim() ? `Regen: ${feedback.trim().slice(0, 60)}` : "Regenerated",
       slide_tree: parent.slide_tree as unknown as object,
+      generation_meta: { ...parentMeta, fidelity },
       created_by: user.id,
     })
     .select("id")
@@ -179,6 +186,7 @@ export async function regenerateDeck(deckId: string, feedback?: string) {
     title: deck.title,
     slide_tree: (parent.slide_tree as unknown as OutlineSlide[]) ?? [],
     design_spec: designSpec,
+    fidelity,
   });
 
   await supabase
@@ -197,13 +205,15 @@ export async function renderDesignedDeck(deckId: string, versionId: string, titl
   if (!user) redirect("/login");
 
   const [{ data: version, error: vErr }, { data: deck, error: dErr }] = await Promise.all([
-    supabase.schema("slides").from("deck_versions").select("slide_tree").eq("id", versionId).single(),
+    supabase.schema("slides").from("deck_versions").select("slide_tree, generation_meta").eq("id", versionId).single(),
     supabase.schema("slides").from("decks").select("template_id, org_id").eq("id", deckId).single(),
   ]);
   if (vErr || !version) throw new Error(vErr?.message);
   if (dErr || !deck) throw new Error(dErr?.message);
 
   const designSpec = await composeDesignSpec(supabase, deck.template_id, deck.org_id);
+  const fidelity =
+    ((version.generation_meta as Record<string, unknown> | null)?.fidelity as Fidelity | undefined) ?? "redesign";
 
   const { html_path } = await slidesApi.renderDeck({
     deck_id: deckId,
@@ -211,6 +221,7 @@ export async function renderDesignedDeck(deckId: string, versionId: string, titl
     title,
     slide_tree: (version.slide_tree as unknown as OutlineSlide[]) ?? [],
     design_spec: designSpec,
+    fidelity,
   });
 
   await supabase
