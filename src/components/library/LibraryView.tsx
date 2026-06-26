@@ -36,7 +36,7 @@ export function LibraryView({ decks, userName, userEmail }: Props) {
           <div className="flex items-center gap-2">
             <div
               className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #F58ED3, #F58ED3aa)" }}
+              style={{ background: "linear-gradient(135deg, #76195c, #5e0842)" }}
             >
               <Presentation className="w-4 h-4 text-white" strokeWidth={2.25} />
             </div>
@@ -240,7 +240,7 @@ function fmtDate(s: string): string {
 function EmptyState() {
   return (
     <div className="panel-card p-12 flex flex-col items-center text-center">
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "linear-gradient(135deg, #F58ED3, #F58ED388)" }}>
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "linear-gradient(135deg, #F58ED3, #D159A3 52%, #A33278)" }}>
         <Sparkles className="w-6 h-6 text-white" strokeWidth={2} />
       </div>
       <h2 className="text-[16px] font-semibold mb-1">No decks yet</h2>

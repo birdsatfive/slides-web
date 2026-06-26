@@ -115,8 +115,8 @@ export function ShareUploadForm() {
           <div className="space-y-5">
             {/* Hero card */}
             <div
-              className="relative overflow-hidden rounded-3xl p-8 text-white shadow-[0_20px_60px_-20px_rgba(245,142,211,0.55)]"
-              style={{ background: "linear-gradient(135deg, #F58ED3 0%, #B83A93 60%, #380527 100%)" }}
+              className="relative overflow-hidden rounded-3xl p-8 text-white shadow-[0_20px_60px_-20px_rgba(94,8,66,0.45)]"
+              style={{ background: "linear-gradient(135deg, #76195c 0%, #5e0842 55%, #3a0428 100%)" }}
             >
               <div
                 aria-hidden
@@ -145,7 +145,7 @@ export function ShareUploadForm() {
                   <button
                     type="button"
                     onClick={copyUrl}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white text-[#380527] text-[12px] font-semibold hover:bg-white/90 transition-smooth"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white text-[#5e0842] text-[12px] font-semibold hover:bg-white/90 transition-smooth"
                   >
                     {copied === "url" ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     {copied === "url" ? "Copied" : "Copy link"}

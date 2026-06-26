@@ -1,24 +1,28 @@
 @import "tailwindcss";
 @import "@fontsource-variable/rubik";
+@import "../styles/birdie.css";        /* canonical tokens + component vocabulary (generated) */
+@import "../styles/birdie-theme.css";  /* canonical Tailwind v4 token→utility map (generated) */
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Aligned with Birdie Design System (birdie-redesign/design-catalog.html).
-   Primary pink #F58ED3; foreground deep purple #380527; Rubik throughout. */
+/* Birdie v2 — canonical (plum-primary, light-only). Tokens kept as rgb triples
+   for legacy `rgb(var(--token))` callsites; the --color-* map resolves through
+   them, so flipping --primary pink→plum re-themes the app. Canvas/cards/
+   component classes come from birdie.css. Pink is reserved for AI content only. */
 :root {
-  --fg: 56 5 39;            /* #380527 deep purple */
-  --primary: 245 142 211;   /* #F58ED3 Birdie pink */
+  --fg: 44 10 34;            /* #2c0a22 ink */
+  --primary: 94 8 66;        /* #5e0842 PLUM — primary / CTA (was pink) */
   --primary-fg: 255 255 255;
-  --secondary: 253 236 248; /* #FDECF8 light pink */
-  --bg: 245 245 245;        /* #F5F5F5 */
+  --secondary: 244 241 246;  /* neutral (pink reserved for AI only) */
+  --bg: 237 234 240;         /* #edeaf0 lilac canvas */
   --card: 255 255 255;
-  --border: 217 217 217;    /* #D9D9D9 */
-  --accent: 253 236 248;
-  --muted: 245 245 245;
-  --muted-fg: 56 5 39;
-  --success: 90 138 102;    /* #5a8a66 */
-  --warning: 245 158 11;
-  --error: 220 38 38;       /* #dc2626 */
+  --border: 219 213 220;     /* #dbd5dc plum-tinted hairline */
+  --accent: 244 241 246;     /* neutral hover */
+  --muted: 244 241 246;
+  --muted-fg: 107 85 102;    /* #6b5566 muted ink */
+  --success: 90 138 102;     /* #5a8a66 */
+  --warning: 176 132 67;     /* #b08443 */
+  --error: 181 84 106;       /* #b5546a */
 }
 
 .dark {
@@ -81,9 +85,9 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: rgb(var(--fg) / 0.3); }
 
 .panel-card {
-  background: rgb(var(--card));
-  border-radius: 16px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  background: linear-gradient(180deg, #ffffff 0%, #fbf9fc 100%);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.85), inset 0 -1px 0 rgba(56,5,39,.035);
 }
 
 .transition-smooth { transition: all 0.15s ease; }

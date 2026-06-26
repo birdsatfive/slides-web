@@ -165,7 +165,7 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
 
   function onHover(e: Event) {
     const el = e.currentTarget as HTMLElement;
-    el.style.boxShadow = "0 0 0 2px rgba(245, 142, 211, 0.45)";
+    el.style.boxShadow = "0 0 0 2px rgba(94, 8, 66, 0.45)";
   }
   function offHover(e: Event) {
     const el = e.currentTarget as HTMLElement;
@@ -174,7 +174,7 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
   function onFocus(e: Event) {
     const el = e.currentTarget as HTMLElement;
     el.dataset.editOriginal = el.textContent ?? "";
-    el.style.boxShadow = "0 0 0 2px rgba(245, 142, 211, 0.85)";
+    el.style.boxShadow = "0 0 0 2px rgba(94, 8, 66, 0.85)";
   }
   function onBlur(e: Event) {
     const el = e.currentTarget as HTMLElement;

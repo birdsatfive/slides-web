@@ -1,0 +1,20 @@
+# Birdie design-system drift gate (canonical: birdsatfive/birdie-redesign).
+# Fails if a vendored design-system file was hand-edited instead of being
+# changed in birdie-redesign and re-synced.
+name: design-drift
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify Birdie design system is in sync
+        run: node scripts/check-design.mjs

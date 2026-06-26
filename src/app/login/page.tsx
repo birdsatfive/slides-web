@@ -66,7 +66,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "rgb(245 245 245)" }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "#edeaf0" }}>
       <div className="w-[440px] max-w-full px-4">
         <div
           className="p-8"
@@ -79,11 +79,11 @@ export default function LoginPage() {
           <div className="mb-8 flex flex-col items-center">
             <div
               className="mb-3 flex h-12 w-12 items-center justify-center"
-              style={{ borderRadius: "12px", background: "rgba(245,142,211,0.12)" }}
+              style={{ borderRadius: "12px", background: "rgba(94,8,66,0.10)" }}
             >
-              <Presentation strokeWidth={2} className="text-[#F58ED3]" width={24} height={24} />
+              <Presentation strokeWidth={2} className="text-[#5e0842]" width={24} height={24} />
             </div>
-            <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: "#380527" }}>
+            <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: "#2c0a22" }}>
               Slides
             </h1>
             <p className="mt-1 text-[13px]" style={{ color: "rgba(56,5,39,0.5)" }}>
@@ -112,19 +112,18 @@ export default function LoginPage() {
             style={{
               padding: "10px 18px",
               borderRadius: "10px",
-              background: "#FDECF8",
-              color: "#380527",
+              background: "#ffffff",
+              border: "1px solid #dbd5dc",
+              color: "#2c0a22",
               fontSize: "12px",
               fontWeight: 600,
               transition: "all 150ms ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#F58ED3";
-              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.background = "#f4f1f6";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#FDECF8";
-              e.currentTarget.style.color = "#380527";
+              e.currentTarget.style.background = "#ffffff";
             }}
           >
             <svg viewBox="0 0 21 21" className="h-[18px] w-[18px]" aria-hidden="true">
@@ -137,14 +136,14 @@ export default function LoginPage() {
           </button>
 
           <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1" style={{ background: "rgb(217 217 217)" }} />
+            <div className="h-px flex-1" style={{ background: "#dbd5dc" }} />
             <span
               className="uppercase tracking-[0.05em]"
               style={{ fontSize: "11px", fontWeight: 500, color: "rgba(56,5,39,0.35)" }}
             >
               or sign in with email
             </span>
-            <div className="h-px flex-1" style={{ background: "rgb(217 217 217)" }} />
+            <div className="h-px flex-1" style={{ background: "#dbd5dc" }} />
           </div>
 
           {magicLinkSent ? (
@@ -176,10 +175,10 @@ export default function LoginPage() {
                   style={{
                     padding: "10px 12px 10px 40px",
                     borderRadius: "10px",
-                    border: "1px solid hsl(0 0% 90%)",
+                    border: "1px solid #dbd5dc",
                     fontSize: "13px",
-                    background: "rgb(245 245 245)",
-                    color: "#380527",
+                    background: "#f7f5f9",
+                    color: "#2c0a22",
                     outline: "none",
                   }}
                 />
@@ -192,8 +191,8 @@ export default function LoginPage() {
                 style={{
                   padding: "10px 18px",
                   borderRadius: "10px",
-                  background: "#380527",
-                  color: "#F5F5F5",
+                  background: "#5e0842",
+                  color: "#ffffff",
                   fontSize: "12px",
                   fontWeight: 600,
                 }}

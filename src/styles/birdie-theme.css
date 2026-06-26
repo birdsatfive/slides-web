@@ -1,0 +1,73 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Birdie Design System — birdie-theme.css  (CANONICAL · Tailwind v4 theme map)
+   Source of truth: github.com/birdsatfive/birdie-redesign  — DO NOT EDIT vendored copy.
+   ─────────────────────────────────────────────────────────────────────────
+   Maps the Birdie CSS-variable tokens (defined in birdie.css :root) onto
+   Tailwind v4 utility names via `@theme inline`, so `var()` stays the single
+   source of values. Import AFTER tailwindcss + birdie.css:
+
+     @import "tailwindcss";
+     @import "../styles/birdie.css";
+     @import "../styles/birdie-theme.css";
+
+   Covers BOTH the Birdie semantic utilities (bg-plum, text-pink, bg-card,
+   rounded-card, …) AND the full shadcn/ui alias surface (bg-primary = PLUM,
+   text-card-foreground, border-input, ring-ring, bg-popover, …) so it is a
+   drop-in for the shadcn-based apps (ops, analytics, slides). Pink is the AI
+   accent only — `bg-primary` is PLUM, never pink.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  /* Font */
+  --font-sans: 'Rubik Variable', 'Rubik', system-ui, -apple-system, sans-serif;
+
+  /* ── Surfaces & ink ── */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-card-soft: var(--card-soft);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-line: var(--line);
+  --color-input: var(--border);
+  --color-ring: var(--pink);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-faint: var(--faint);
+  --color-accent: var(--muted);
+  --color-accent-foreground: var(--foreground);
+  --color-secondary: var(--muted);
+  --color-secondary-foreground: var(--foreground);
+
+  /* ── Brand — PLUM is primary / CTA; PINK is the AI accent only ── */
+  --color-primary: var(--plum);
+  --color-primary-foreground: #ffffff;
+  --color-plum: var(--plum);
+  --color-pink: var(--pink);
+  --color-pink-soft: var(--pink-soft);
+  --color-maroon: var(--maroon);
+
+  /* ── Status (semantic + shadcn aliases) ── */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-error: var(--destructive);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: #ffffff;
+
+  /* ── Radius ── */
+  --radius-card: var(--radius-card);
+  --radius-btn: var(--radius-btn);
+  --radius-btn-sm: var(--radius-btn-sm);
+  --radius-input: var(--radius-input);
+  --radius-badge: var(--radius-badge);
+  --radius-modal: var(--radius-modal);
+  --radius-nav: var(--radius-nav);
+
+  /* ── Shadows ── */
+  --shadow-panel: var(--shadow-panel);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-modal: var(--shadow-modal);
+}

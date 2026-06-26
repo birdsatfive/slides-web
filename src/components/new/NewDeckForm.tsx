@@ -130,7 +130,7 @@ export function NewDeckForm({ templates }: Props) {
               className={
                 "inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-full border transition-smooth " +
                 (templateId === null
-                  ? "bg-[rgb(var(--primary))] border-[rgb(var(--primary))] text-white font-medium shadow-[0_2px_8px_rgba(245,142,211,0.35)]"
+                  ? "bg-[rgb(var(--primary))] border-[rgb(var(--primary))] text-white font-medium shadow-[0_2px_8px_rgba(94,8,66,0.35)]"
                   : "border-border text-foreground/55 hover:text-foreground hover:border-[rgb(var(--primary)/0.5)]")
               }
             >
