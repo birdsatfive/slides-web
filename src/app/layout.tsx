@@ -4,7 +4,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Slides — BirdsAtFive",
   description: "AI decks & presentations",
-  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({
