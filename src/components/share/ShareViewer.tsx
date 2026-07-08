@@ -7,13 +7,15 @@ interface Props {
   title: string;
   htmlUrl: string;
   shareLinkId: string;
+  /** PDF-backed shares must not sandbox the iframe — see below. */
+  isPdf?: boolean;
 }
 
 /**
  * Public deck viewer. Streams the rendered HTML inside a sandboxed iframe and
  * heart-beats `/api/share/track` every 15s so we know who watched what.
  */
-export function ShareViewer({ title, htmlUrl, shareLinkId }: Props) {
+export function ShareViewer({ title, htmlUrl, shareLinkId, isPdf = false }: Props) {
   const sessionRef = useRef<string>("");
   const [activeSlideId, setActiveSlideId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>("");
@@ -66,11 +68,18 @@ export function ShareViewer({ title, htmlUrl, shareLinkId }: Props) {
 
   return (
     <div className="fixed inset-0">
+      {/*
+        HTML decks run in a sandboxed iframe (untrusted user HTML). PDFs are
+        shown by the browser's built-in PDF viewer, which is plugin content —
+        any `sandbox` attribute blocks plugins (no token re-enables them), so
+        a sandboxed PDF renders blank. The browser isolates the PDF viewer
+        itself, so omitting the sandbox here is safe.
+      */}
       <iframe
         src={htmlUrl}
         title={title}
         className="w-full h-full border-0"
-        sandbox="allow-scripts allow-same-origin"
+        sandbox={isPdf ? undefined : "allow-scripts allow-same-origin"}
       />
       {sessionId && (
         <CommentsPanel

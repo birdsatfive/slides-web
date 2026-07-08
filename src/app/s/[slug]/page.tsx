@@ -67,7 +67,13 @@ export default async function ShareLinkPage({
   // Storage serves text/plain by default, breaking the iframe render).
   const htmlUrl = `/api/share/${slug}/render${pw ? `?pw=${encodeURIComponent(pw)}` : ""}`;
 
-  return <ShareViewer title={title} htmlUrl={htmlUrl} shareLinkId={link.id} />;
+  // PDFs are rendered by the browser's built-in PDF viewer, which counts as
+  // plugin content. A sandboxed iframe unconditionally blocks plugins (no
+  // sandbox token re-enables them), so the viewer would render blank — the
+  // ShareViewer must drop the sandbox for PDF-backed shares.
+  const isPdf = version.html_path.endsWith(".pdf");
+
+  return <ShareViewer title={title} htmlUrl={htmlUrl} shareLinkId={link.id} isPdf={isPdf} />;
 }
 
 function PasswordGate({ slug }: { slug: string }) {
