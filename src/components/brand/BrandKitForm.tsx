@@ -182,7 +182,7 @@ export function BrandKitForm({ kits }: Props) {
               type="button"
               disabled={pending || !draft.name.trim()}
               onClick={save}
-              className="px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium disabled:opacity-60"
+              className="btn-primary"
             >
               {pending ? "Saving…" : active ? "Save changes" : "Create kit"}
             </button>

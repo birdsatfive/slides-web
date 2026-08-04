@@ -259,14 +259,14 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
             {!shareOnly && (
               <a
                 href={`/d/${deckId}/outline`}
-                className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5 text-foreground/80"
+                className="btn-secondary btn-sm"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Edit outline
               </a>
             )}
             <a
               href={`/d/${deckId}/stats`}
-              className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5 text-foreground/80"
+              className="btn-secondary btn-sm"
             >
               <BarChart2 className="w-3.5 h-3.5" /> Stats
             </a>
@@ -336,7 +336,7 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
                 <p className="mb-4">Approve the outline to render the designed deck.</p>
                 <a
                   href={`/d/${deckId}/outline`}
-                  className="inline-flex px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium"
+                  className="btn-primary"
                 >
                   Open outline
                 </a>
@@ -389,7 +389,7 @@ export function DeckViewer({ deckId, title, versionId, slideTree, htmlUrl, share
                 type="button"
                 onClick={runRemix}
                 disabled={pending || !remixPrompt.trim()}
-                className="px-3 py-1.5 rounded-md bg-[rgb(var(--primary))] text-white text-[12px] font-medium disabled:opacity-60"
+                className="btn-primary"
               >
                 {pending ? "Remixing…" : "Run remix"}
               </button>

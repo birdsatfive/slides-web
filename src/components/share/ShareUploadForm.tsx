@@ -183,7 +183,7 @@ export function ShareUploadForm() {
                 <button
                   type="button"
                   onClick={copyPassword}
-                  className="px-3 py-1.5 rounded-md text-[12px] border border-border hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5"
+                  className="btn-secondary btn-sm"
                 >
                   {copied === "password" ? <Check className="w-3.5 h-3.5 text-[rgb(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied === "password" ? "Copied" : "Copy"}
@@ -197,13 +197,13 @@ export function ShareUploadForm() {
                 href={result.url}
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium inline-flex items-center gap-1.5 hover:opacity-90 transition-smooth"
+                className="btn-primary"
               >
                 <ExternalLink className="w-4 h-4" /> Open
               </a>
               <a
                 href="/"
-                className="px-4 py-2 rounded-lg border border-border text-[13px] hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5"
+                className="btn-secondary btn-sm"
               >
                 <ArrowLeft className="w-4 h-4" /> Back to library
               </a>
@@ -322,7 +322,7 @@ export function ShareUploadForm() {
                   type="button"
                   onClick={onSubmit}
                   disabled={pending || (tab === "html_raw" ? !rawHtml.trim() : !file)}
-                  className="px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium inline-flex items-center gap-1.5 disabled:opacity-60"
+                  className="btn-primary"
                 >
                   <Share2 className="w-4 h-4" />
                   {pending ? "Creating link…" : "Create share link"}

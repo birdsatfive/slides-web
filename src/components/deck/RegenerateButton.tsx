@@ -90,7 +90,7 @@ export function RegenerateButton({ deckId }: Props) {
                 type="button"
                 disabled={pending}
                 onClick={run}
-                className="px-4 py-1.5 rounded-md bg-[rgb(var(--primary))] text-white text-[12px] font-medium inline-flex items-center gap-1.5 disabled:opacity-60"
+                className="btn-primary"
               >
                 <RefreshCw className={"w-3.5 h-3.5 " + (pending ? "animate-spin" : "")} />
                 {pending ? "Regenerating…" : "Regenerate"}

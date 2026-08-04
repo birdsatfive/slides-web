@@ -96,7 +96,7 @@ export function OutlineEditor({ deckId, title, versionId, slideTree, hasRender }
             <button
               type="button"
               onClick={add}
-              className="px-3 py-2 rounded-lg text-[13px] inline-flex items-center gap-1 border border-border hover:bg-[rgb(var(--fg)/0.04)] transition-smooth"
+              className="btn-secondary btn-sm"
             >
               <Plus className="w-3.5 h-3.5" /> Add slide
             </button>
@@ -104,7 +104,7 @@ export function OutlineEditor({ deckId, title, versionId, slideTree, hasRender }
               type="button"
               disabled={pending || tree.length === 0}
               onClick={persistThenRender}
-              className="px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium inline-flex items-center gap-1.5 transition-smooth hover:opacity-90 disabled:opacity-60"
+              className="btn-primary"
             >
               <Sparkles className="w-3.5 h-3.5" />
               {pending ? "Designing…" : hasRender ? "Re-render deck" : "Render deck"}

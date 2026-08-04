@@ -108,7 +108,7 @@ export function ShareControls({ deckId, versionId, links, hasRender }: Props) {
             type="button"
             disabled={pending || !hasRender}
             onClick={create}
-            className="w-full px-3 py-1.5 rounded-md bg-[rgb(var(--primary))] text-white text-[12px] font-medium disabled:opacity-60"
+            className="btn-primary w-full"
           >
             {pending ? "Creating…" : "Create link"}
           </button>
@@ -152,7 +152,7 @@ export function ShareControls({ deckId, versionId, links, hasRender }: Props) {
           type="button"
           disabled={pending || !hasRender}
           onClick={exportPdf}
-          className="w-full px-3 py-1.5 rounded-md border border-border text-[12px] font-medium hover:bg-[rgb(var(--fg)/0.04)] disabled:opacity-60"
+          className="btn-secondary btn-sm w-full"
         >
           {pending ? "Building PDF…" : "Export to PDF"}
         </button>

@@ -66,7 +66,7 @@ export function LibraryView({ decks, userName, userEmail }: Props) {
           <div className="flex items-center gap-2">
             <a
               href="/share/new"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-[13px] font-medium transition-smooth hover:bg-[rgb(var(--fg)/0.04)]"
+              className="btn-secondary btn-sm"
               title="Upload an existing file and get a share link"
             >
               <Upload className="w-4 h-4" />
@@ -74,7 +74,7 @@ export function LibraryView({ decks, userName, userEmail }: Props) {
             </a>
             <a
               href="/new"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium transition-smooth hover:opacity-90"
+              className="btn-primary"
             >
               <Plus className="w-4 h-4" />
               New deck
@@ -181,7 +181,7 @@ function DeckTr({ deck }: { deck: DeckRow }) {
         <div className="inline-flex items-center gap-1">
           <a
             href={`/d/${deck.id}`}
-            className="px-2.5 py-1 rounded-md text-[12px] inline-flex items-center gap-1 bg-[rgb(var(--primary))] text-white font-medium hover:opacity-90 transition-smooth"
+            className="btn-primary"
           >
             Open <ArrowRight className="w-3 h-3" />
           </a>
@@ -248,7 +248,7 @@ function EmptyState() {
         Start from a prompt, paste an outline, drop a PPTX, or point at a URL.
         We&apos;ll generate a designed deck you can edit and share.
       </p>
-      <a href="/new" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium transition-smooth hover:opacity-90">
+      <a href="/new" className="btn-primary">
         <Plus className="w-4 h-4" />
         Create your first deck
       </a>

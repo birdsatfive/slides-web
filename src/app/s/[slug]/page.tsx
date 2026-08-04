@@ -94,11 +94,11 @@ function PasswordGate({ slug }: { slug: string }) {
           required
           autoFocus
           placeholder="Password"
-          className="w-full px-3 py-2 rounded-lg border border-border bg-card text-[13px] outline-none focus:border-[rgb(var(--primary))] focus:ring-2 focus:ring-[rgb(var(--primary)/0.2)] transition-smooth"
+          className="input-base w-full"
         />
         <button
           type="submit"
-          className="mt-3 w-full px-4 py-2 rounded-lg bg-[rgb(var(--primary))] text-white text-[13px] font-medium"
+          className="btn-primary mt-3 w-full"
         >
           View deck
         </button>

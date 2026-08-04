@@ -82,7 +82,7 @@ export function CommentsPanel({ shareLinkId, activeSlideId, sessionId }: Props) 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[rgb(var(--primary))] text-white text-[12px] font-medium shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
+        className="btn-primary fixed bottom-5 right-5 z-50 shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
         title="Open comments"
       >
         <MessageSquare className="w-4 h-4" />
@@ -141,7 +141,7 @@ export function CommentsPanel({ shareLinkId, activeSlideId, sessionId }: Props) 
           type="button"
           onClick={post}
           disabled={posting || !body.trim()}
-          className="w-full px-3 py-1.5 rounded-md bg-[rgb(var(--primary))] text-white text-[12px] font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+          className="btn-primary w-full"
         >
           <Send className="w-3.5 h-3.5" />
           {posting ? "Posting…" : "Post"}

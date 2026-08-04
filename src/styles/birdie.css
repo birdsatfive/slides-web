@@ -232,18 +232,43 @@ body::before {
     background:var(--card); color:var(--muted-foreground); font-size:13px; font-weight:450; cursor:pointer; transition:.18s; box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.6); }
   .chip:hover { border-color:var(--line-2); color:var(--ink); }
   .chip .ava { width:24px; height:24px; border-radius:7px; display:grid; place-items:center; font-size:10px; font-weight:600; color:#fff; }
-  .chip.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  /* Selected chip matches the active sidebar link exactly: flat plum fill with
+     a soft plum drop shadow. No inset white highlight — the card sheen that
+     reads as lift on a white chip reads as cheap gloss on a plum fill. */
+  .chip.on { background:var(--plum); color:#fff; border-color:var(--plum);
+    box-shadow:0 4px 14px rgba(94,8,66,.22); }
   .chip.ghost { margin-left:auto; border:none; background:transparent; box-shadow:none; }
   .chip svg { width:15px; height:15px; }
-  .tabs { display:flex; align-items:center; gap:3px; height:42px; background:var(--card); border:1px solid var(--line); border-radius:13px; padding:0 4px;
-    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.6); width:fit-content; }
-  .tabs a, .tab-btn { height:34px; padding:0 15px; border-radius:9px; font-size:13px; font-weight:450; color:var(--muted-foreground); transition:.18s;
+  /* `.tabs` — underlined strip for page-level navigation. A boxed segmented
+     control carries too much vertical weight for a nav row, so the container
+     is just a hairline and the active tab gets a 2px plum underline.
+     The underline is an ::after element, never a border-bottom: a bottom
+     border on a rounded button renders as curved hooks at both ends. */
+  .tabs { display:flex; align-items:stretch; gap:2px; width:auto; padding:0;
+    background:none; border:none; border-radius:0; box-shadow:none;
+    border-bottom:1px solid var(--line); }
+  .tabs a, .tab-btn { position:relative; height:38px; padding:0 12px; border-radius:0; font-size:13px; font-weight:450;
+    color:var(--muted-foreground); transition:.18s;
     display:flex; align-items:center; gap:7px; cursor:pointer; background:transparent; border:none; font-family:inherit; }
   .tabs a svg, .tab-btn svg { width:15px; height:15px; }
-  .tabs a:hover, .tab-btn:hover { color:var(--ink); }
-  .tabs a.active, .tab-btn.active, .tabs button[aria-selected="true"] { background:var(--plum); color:#fff; }
-  .tabs.sm { height:34px; }
-  .tabs.sm a, .tabs.sm .tab-btn { height:26px; padding:0 12px; font-size:12px; }
+  .tabs a:hover, .tab-btn:hover { color:var(--ink); background:transparent; }
+  .tabs a.active, .tab-btn.active, .tabs button[aria-selected="true"] {
+    background:transparent; color:var(--plum); font-weight:500; }
+  .tabs a.active::after, .tab-btn.active::after, .tabs button[aria-selected="true"]::after {
+    content:''; position:absolute; left:10px; right:10px; bottom:-1px; height:2px;
+    border-radius:2px 2px 0 0; background:var(--plum); }
+
+  /* `.tabs.sm` — the boxed compact toggle, for switching a view (Kanban /
+     List / Calendar) rather than navigating. Flat plum on the active segment,
+     matching the active sidebar link and the selected chip. */
+  .tabs.sm { align-items:center; gap:3px; height:34px; width:fit-content; padding:0 4px;
+    background:var(--card); border:1px solid var(--line); border-radius:13px;
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.6); }
+  .tabs.sm a, .tabs.sm .tab-btn { height:26px; padding:0 12px; font-size:12px; border-radius:9px; }
+  .tabs.sm a.active, .tabs.sm .tab-btn.active, .tabs.sm button[aria-selected="true"] {
+    background:var(--plum); color:#fff; }
+  .tabs.sm a.active::after, .tabs.sm .tab-btn.active::after, .tabs.sm button[aria-selected="true"]::after {
+    display:none; }
   .fdrop { display:inline-flex; align-items:center; gap:9px; height:42px; padding:0 15px; border-radius:13px; border:1px solid var(--line);
     background:var(--card); color:var(--muted-foreground); font-size:13px; font-weight:450; cursor:pointer; transition:.18s; box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.6); }
   .fdrop:hover { border-color:var(--line-2); color:var(--ink); }
