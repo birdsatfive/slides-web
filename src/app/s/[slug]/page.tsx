@@ -31,12 +31,9 @@ export async function generateMetadata({
     .eq("slug", slug)
     .single();
 
-  // Dead, expired and password-gated links all fall back to the app defaults:
-  // a preview is generated for anyone holding the URL, so a protected share
-  // must not spell out its contents to them.
+  // A revoked or expired link advertises nothing.
   if (!link || link.revoked_at) return {};
   if (link.expires_at && new Date(link.expires_at) < new Date()) return {};
-  if (link.password_hash) return { title: "Password protected" };
 
   const { data: deck } = await svc
     .schema("slides")
@@ -44,6 +41,30 @@ export async function generateMetadata({
     .select("title, current_version_id")
     .eq("id", link.deck_id)
     .single();
+
+  // Absolute URLs — link unfurlers reject relative ones.
+  const h = await headers();
+  const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "slides.birdsatfive.dk"}`;
+  const url = `${origin}/s/${slug}`;
+
+  // A protected share still shows the name it was given — that title is the
+  // sender's own label for the link, not something read out of the document.
+  // What stays behind the password is the content: no description or image is
+  // lifted from inside, since the preview reaches anyone holding the URL.
+  if (link.password_hash) {
+    const protectedTitle = deck?.title || "Shared file";
+    return {
+      title: protectedTitle,
+      description: "Password protected",
+      openGraph: {
+        title: protectedTitle,
+        description: "Password protected",
+        url,
+        siteName: "Slides — BirdsAtFive",
+        type: "website",
+      },
+    };
+  }
 
   const versionId = link.version_id ?? deck?.current_version_id ?? null;
   if (!versionId) return {};
@@ -58,10 +79,6 @@ export async function generateMetadata({
   const meta = (version?.generation_meta ?? {}) as Record<string, unknown>;
   const isBundle = meta.kind === "html_bundle";
   const entry = typeof meta.entry === "string" && meta.entry ? meta.entry : "index.html";
-
-  // Absolute URLs — link unfurlers reject relative ones.
-  const h = await headers();
-  const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "slides.birdsatfive.dk"}`;
 
   let selfDescribed: { title?: string; description?: string; image?: string } = {};
   if (version?.html_path && !version.html_path.endsWith(".pdf")) {
@@ -89,8 +106,6 @@ export async function generateMetadata({
       image = `${origin}/api/share/${slug}/f/${base}${selfDescribed.image.replace(/^\.?\//, "")}`;
     }
   }
-
-  const url = `${origin}/s/${slug}`;
 
   return {
     title,
