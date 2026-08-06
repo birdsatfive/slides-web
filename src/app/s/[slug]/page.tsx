@@ -1,9 +1,116 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import type { Metadata } from "next";
 import { createServiceClient } from "@/lib/supabase/server";
 import { ShareViewer } from "@/components/share/ShareViewer";
+import { extractHtmlMeta } from "@/lib/share/access";
 import { createHash } from "node:crypto";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Link previews (Teams, Slack, iMessage) read the tags on this page, not the
+ * framed document — without these they all fall back to the app-wide title in
+ * the root layout, so every share looked identical.
+ *
+ * The shared document is the better source: whatever it declares about itself
+ * wins, with the deck title as the fallback for anything it leaves out.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const svc = createServiceClient();
+
+  const { data: link } = await svc
+    .schema("slides")
+    .from("share_links")
+    .select("deck_id, version_id, password_hash, expires_at, revoked_at")
+    .eq("slug", slug)
+    .single();
+
+  // Dead, expired and password-gated links all fall back to the app defaults:
+  // a preview is generated for anyone holding the URL, so a protected share
+  // must not spell out its contents to them.
+  if (!link || link.revoked_at) return {};
+  if (link.expires_at && new Date(link.expires_at) < new Date()) return {};
+  if (link.password_hash) return { title: "Password protected" };
+
+  const { data: deck } = await svc
+    .schema("slides")
+    .from("decks")
+    .select("title, current_version_id")
+    .eq("id", link.deck_id)
+    .single();
+
+  const versionId = link.version_id ?? deck?.current_version_id ?? null;
+  if (!versionId) return {};
+
+  const { data: version } = await svc
+    .schema("slides")
+    .from("deck_versions")
+    .select("html_path, generation_meta")
+    .eq("id", versionId)
+    .single();
+
+  const meta = (version?.generation_meta ?? {}) as Record<string, unknown>;
+  const isBundle = meta.kind === "html_bundle";
+  const entry = typeof meta.entry === "string" && meta.entry ? meta.entry : "index.html";
+
+  // Absolute URLs — link unfurlers reject relative ones.
+  const h = await headers();
+  const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "slides.birdsatfive.dk"}`;
+
+  let selfDescribed: { title?: string; description?: string; image?: string } = {};
+  if (version?.html_path && !version.html_path.endsWith(".pdf")) {
+    const { data: blob } = await svc.storage.from("slides-html").download(version.html_path);
+    if (blob) selfDescribed = extractHtmlMeta(await blob.text());
+  }
+
+  const title = selfDescribed.title || deck?.title || "Shared file";
+  // Skip a description that merely restates the title.
+  const description =
+    selfDescribed.description && selfDescribed.description !== title
+      ? selfDescribed.description
+      : deck?.title && deck.title !== title
+        ? deck.title
+        : undefined;
+
+  // A declared og:image is relative to the document, which for a folder share
+  // is served under /f/.
+  let image: string | undefined;
+  if (selfDescribed.image) {
+    if (/^https?:\/\//i.test(selfDescribed.image)) {
+      image = selfDescribed.image;
+    } else if (isBundle) {
+      const base = entry.includes("/") ? `${entry.slice(0, entry.lastIndexOf("/"))}/` : "";
+      image = `${origin}/api/share/${slug}/f/${base}${selfDescribed.image.replace(/^\.?\//, "")}`;
+    }
+  }
+
+  const url = `${origin}/s/${slug}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "Slides — BirdsAtFive",
+      type: "website",
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
+  };
+}
 
 export default async function ShareLinkPage({
   params,

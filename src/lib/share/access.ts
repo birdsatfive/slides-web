@@ -189,3 +189,54 @@ export function contentTypeFor(path: string): string {
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
   return CONTENT_TYPES[ext] ?? "application/octet-stream";
 }
+
+export interface HtmlMeta {
+  title?: string;
+  description?: string;
+  image?: string;
+}
+
+/**
+ * Pull the tags a shared document declares about itself, so a link preview
+ * describes the content rather than the app hosting it. Open Graph wins over
+ * the plain tags, which is the precedence a crawler would apply.
+ *
+ * Only the head is scanned — the body can be megabytes and holds nothing
+ * relevant.
+ */
+export function extractHtmlMeta(html: string): HtmlMeta {
+  const head = html.slice(0, Math.max(html.search(/<\/head>/i), 0) || 16384);
+
+  const meta = (attr: "property" | "name", key: string): string | undefined => {
+    // content= may sit on either side of the identifying attribute.
+    const patterns = [
+      new RegExp(`<meta[^>]+${attr}=["']${key}["'][^>]*content=["']([^"']*)["']`, "i"),
+      new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*${attr}=["']${key}["']`, "i"),
+    ];
+    for (const re of patterns) {
+      const m = head.match(re);
+      if (m?.[1]?.trim()) return decodeEntities(m[1].trim());
+    }
+    return undefined;
+  };
+
+  const titleTag = head.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim();
+
+  return {
+    title: meta("property", "og:title") ?? (titleTag ? decodeEntities(titleTag) : undefined),
+    description: meta("property", "og:description") ?? meta("name", "description"),
+    image: meta("property", "og:image"),
+  };
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
