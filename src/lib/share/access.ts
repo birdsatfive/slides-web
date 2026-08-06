@@ -116,22 +116,39 @@ export function bundleEntry(meta: Record<string, unknown>): string {
 /**
  * Reject anything that could climb out of the bundle's storage prefix.
  * Returns the cleaned relative path, or null when the path is unusable.
+ *
+ * The storage key is interpolated into a URL, so a separator that survives
+ * this function is resolved downstream: `a/b//../../x` addresses `x` at the
+ * bucket root, i.e. another deck's files. Each segment is therefore decoded
+ * to a fixed point *before* it is checked — decoding after a `/` split would
+ * let `%252f%252e%252e` unfold into `/..` once the checks had already run.
  */
+function cleanSegment(raw: string): string | null {
+  let s = raw;
+  for (let round = 0; round < 4; round++) {
+    let next: string;
+    try {
+      next = decodeURIComponent(s);
+    } catch {
+      return null; // malformed escape — never a real filename
+    }
+    if (next === s) break;
+    s = next;
+  }
+  if (s.length === 0 || s === ".") return "";
+  if (s === ".." || s.includes("/") || s.includes("\\") || s.includes("\0")) return null;
+  return s;
+}
+
 export function safeRelPath(segments: string[]): string | null {
-  const parts = segments
-    .flatMap((s) => s.split("/"))
-    .map((s) => {
-      try {
-        return decodeURIComponent(s);
-      } catch {
-        return s;
-      }
-    })
-    .filter((s) => s.length > 0 && s !== ".");
+  const parts: string[] = [];
+  for (const raw of segments.flatMap((s) => s.split("/"))) {
+    const clean = cleanSegment(raw);
+    if (clean === null) return null;
+    if (clean.length > 0) parts.push(clean);
+  }
 
   if (parts.length === 0) return null;
-  if (parts.some((s) => s === ".." || s.includes("\\") || s.includes("\0"))) return null;
-
   const path = parts.join("/");
   return path.length > 1024 ? null : path;
 }

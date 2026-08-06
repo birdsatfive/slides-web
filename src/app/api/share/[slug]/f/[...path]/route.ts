@@ -62,14 +62,23 @@ export async function GET(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const response = new NextResponse(download.data, {
-    status: 200,
-    headers: {
-      "Content-Type": contentTypeFor(key),
-      // Password-gated bundles must never land in a shared cache.
-      "Cache-Control": share.protectedLink ? "private, max-age=60" : "public, max-age=300",
-    },
-  });
+  const contentType = contentTypeFor(key);
+  const headers: Record<string, string> = {
+    "Content-Type": contentType,
+    // Password-gated bundles must never land in a shared cache.
+    "Cache-Control": share.protectedLink ? "private, max-age=60" : "public, max-age=300",
+    "X-Content-Type-Options": "nosniff",
+  };
+
+  // Note: bundles are served from this app's own origin, so their scripts can
+  // reach the viewer's session the same way an uploaded deck's HTML already
+  // can. Forcing an opaque origin here (CSP `sandbox`, or dropping
+  // `allow-same-origin` from the viewer's iframe) does close that, but it
+  // also blanks the framed document and blocks @font-face, since a bundle's
+  // requests for its own files then count as cross-origin. Isolating this on
+  // a separate host is the fix that does not cost the render.
+
+  const response = new NextResponse(download.data, { status: 200, headers });
 
   // The password rides the query string only on the entry request. Persist it
   // so the relative asset and sub-page requests that follow stay authorised.

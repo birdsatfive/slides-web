@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { slidesApi } from "@/lib/api/slides";
 import { createServiceClient } from "@/lib/supabase/server";
 import { resolveOrgId } from "@/lib/auth/org";
+import { safeRelPath } from "@/lib/share/access";
 
 const SLUG_ALPHABET = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const slug = customAlphabet(SLUG_ALPHABET, 10);
@@ -314,16 +315,13 @@ export async function uploadBundleFile(input: {
   return { ok: true };
 }
 
-/** Strip anything that could escape the bundle root; null when unusable. */
+/**
+ * Upload paths come from the client, and the key is interpolated into a URL —
+ * so an unchecked `..` would let a caller write over another deck's files.
+ * Same gate as the read side.
+ */
 function sanitizeRelPath(raw: string): string | null {
-  const parts = raw
-    .replace(/\\/g, "/")
-    .split("/")
-    .filter((s) => s.length > 0 && s !== ".");
-  if (parts.length === 0) return null;
-  if (parts.some((s) => s === ".." || s.includes("\0"))) return null;
-  const path = parts.join("/");
-  return path.length > 1024 ? null : path;
+  return safeRelPath(raw.replace(/\\/g, "/").split("/"));
 }
 
 /**

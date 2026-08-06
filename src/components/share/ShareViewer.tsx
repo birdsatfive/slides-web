@@ -86,9 +86,10 @@ export function ShareViewer({ title, htmlUrl, shareLinkId, isPdf = false, isBund
             ? undefined
             : isBundle
               // Folder shares are whole small sites: they submit forms, open
-              // external links and offer downloads. Still no top-level
-              // navigation, so the frame can never take over the page.
-              ? "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
+              // external links and offer downloads. Same tokens as a deck
+              // otherwise — dropping allow-same-origin puts the bundle on an
+              // opaque origin, which blanks the frame and breaks its fonts.
+              ? "allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
               : "allow-scripts allow-same-origin"
         }
       />
