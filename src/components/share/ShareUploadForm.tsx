@@ -1,10 +1,10 @@
 "use client";
 
-import { ArrowLeft, Check, Clock, Code, Copy, ExternalLink, FileText, Lock, Share2, Sparkles, Upload } from "lucide-react";
+import { ArrowLeft, Check, Clock, Code, Copy, ExternalLink, FileText, FolderTree, Lock, Share2, Sparkles, Upload } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
-import { createSharedFile } from "@/lib/share/actions";
+import { createBundleShare, createSharedFile, uploadBundleFile } from "@/lib/share/actions";
 
-type Tab = "html_file" | "html_raw" | "pdf";
+type Tab = "html_file" | "html_raw" | "pdf" | "folder";
 
 interface ShareResult {
   url: string;
@@ -12,6 +12,84 @@ interface ShareResult {
   title: string;
   kind: Tab;
   expiry: "never" | "24h" | "7d" | "30d";
+  fileCount?: number;
+}
+
+interface BundleFile {
+  /** Path relative to the folder root, e.g. `assets/img/hero.jpg`. */
+  path: string;
+  file: File;
+}
+
+/** Editor droppings and dependency folders never belong in a share. */
+const IGNORED = /(^|\/)(\.[^/]+|__MACOSX|node_modules)(\/|$)/;
+
+/** Concurrent uploads — enough to keep a folder quick, gentle on storage. */
+const UPLOAD_LANES = 4;
+
+/**
+ * Drop the wrapper directory the picker prepends ("Oterra/index.html"), so
+ * the entry document sits at the bundle root. Repeats while the whole
+ * selection still shares one top-level folder.
+ */
+function stripCommonRoot(items: BundleFile[]): BundleFile[] {
+  let out = items;
+  for (let depth = 0; depth < 5; depth++) {
+    if (out.length === 0) return out;
+    const [first] = out[0].path.split("/");
+    const shared = out.every((i) => {
+      const parts = i.path.split("/");
+      return parts.length > 1 && parts[0] === first;
+    });
+    if (!shared) return out;
+    out = out.map((i) => ({ ...i, path: i.path.split("/").slice(1).join("/") }));
+  }
+  return out;
+}
+
+function cleanBundle(items: BundleFile[]): BundleFile[] {
+  return stripCommonRoot(items.filter((i) => !IGNORED.test(i.path)));
+}
+
+/** The page the share opens on: index.html, or the one root-level HTML file. */
+function pickEntry(items: BundleFile[]): string | null {
+  const roots = items.filter((i) => !i.path.includes("/"));
+  const index = roots.find((i) => i.path.toLowerCase() === "index.html");
+  if (index) return index.path;
+  const htmls = roots.filter((i) => /\.html?$/i.test(i.path));
+  return htmls.length === 1 ? htmls[0].path : null;
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Walk a dropped directory. `dataTransfer.files` is empty for folders, so the
+ * entries API is the only way to read one that was dragged in.
+ */
+async function readDropEntry(entry: FileSystemEntry, prefix: string, out: BundleFile[]): Promise<void> {
+  if (entry.isFile) {
+    const file = await new Promise<File>((resolve, reject) =>
+      (entry as FileSystemFileEntry).file(resolve, reject),
+    );
+    out.push({ path: prefix + entry.name, file });
+    return;
+  }
+  if (!entry.isDirectory) return;
+  const reader = (entry as FileSystemDirectoryEntry).createReader();
+  // readEntries returns at most 100 per call — keep reading until it dries up.
+  for (;;) {
+    const batch = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+      reader.readEntries(resolve, reject),
+    );
+    if (batch.length === 0) return;
+    for (const child of batch) {
+      await readDropEntry(child, `${prefix}${entry.name}/`, out);
+    }
+  }
 }
 
 export function ShareUploadForm() {
@@ -27,12 +105,71 @@ export function ShareUploadForm() {
   const [copied, setCopied] = useState<"url" | "password" | null>(null);
   const dragRef = useRef(false);
   const [drag, setDrag] = useState(false);
+  const [bundle, setBundle] = useState<BundleFile[]>([]);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const bundleEntry = bundle.length > 0 ? pickEntry(bundle) : null;
+  const bundleBytes = bundle.reduce((sum, i) => sum + i.file.size, 0);
 
   function pickName(f: File): string {
     return f.name.replace(/\.[^.]+$/, "");
   }
 
+  /** Upload the bundle over a few lanes, reporting progress as files land. */
+  async function uploadBundle(deckId: string, versionId: string) {
+    let next = 0;
+    let done = 0;
+    setProgress({ done: 0, total: bundle.length });
+    const lanes = Array.from({ length: Math.min(UPLOAD_LANES, bundle.length) }, async () => {
+      for (;;) {
+        const i = next++;
+        if (i >= bundle.length) return;
+        await uploadBundleFile({
+          deckId,
+          versionId,
+          relPath: bundle[i].path,
+          file: bundle[i].file,
+        });
+        done++;
+        setProgress({ done, total: bundle.length });
+      }
+    });
+    await Promise.all(lanes);
+  }
+
+  function onSubmitFolder() {
+    setError(null);
+    start(async () => {
+      try {
+        const entry = pickEntry(bundle);
+        if (!entry) throw new Error("No index.html at the folder root");
+        const t = title.trim() || "Shared folder";
+        const out = await createBundleShare({
+          title: t,
+          entry,
+          fileCount: bundle.length,
+          password: pwd || undefined,
+          expiresIn: expiry,
+        });
+        await uploadBundle(out.deckId, out.versionId);
+        setResult({
+          url: `${window.location.origin}/s/${out.slug}`,
+          password: out.password,
+          title: t,
+          kind: "folder",
+          expiry,
+          fileCount: bundle.length,
+        });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setProgress(null);
+      }
+    });
+  }
+
   function onSubmit() {
+    if (tab === "folder") return onSubmitFolder();
     setError(null);
     start(async () => {
       try {
@@ -84,7 +221,34 @@ export function ShareUploadForm() {
   function kindLabel(k: Tab): string {
     if (k === "pdf") return "PDF";
     if (k === "html_raw") return "Raw HTML";
+    if (k === "folder") return "Folder";
     return "HTML file";
+  }
+
+  function onPickFolder(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const items = Array.from(files).map((f) => ({
+      path: (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name,
+      file: f,
+    }));
+    setBundle(cleanBundle(items));
+    setError(null);
+  }
+
+  /** A dropped folder arrives as directory entries, not as files. */
+  async function onDropBundle(dt: DataTransfer) {
+    const entries = Array.from(dt.items)
+      .map((i) => i.webkitGetAsEntry?.())
+      .filter((e): e is FileSystemEntry => Boolean(e));
+    if (entries.length === 0) return onPickFolder(dt.files);
+    try {
+      const out: BundleFile[] = [];
+      for (const entry of entries) await readDropEntry(entry, "", out);
+      setBundle(cleanBundle(out));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not read that folder");
+    }
   }
 
   function onDropFiles(files: FileList | null) {
@@ -163,7 +327,10 @@ export function ShareUploadForm() {
 
                 {/* Meta chips */}
                 <div className="mt-4 flex flex-wrap gap-1.5">
-                  <Chip icon={<FileText className="w-3 h-3" />}>{kindLabel(result.kind)}</Chip>
+                  <Chip icon={result.kind === "folder" ? <FolderTree className="w-3 h-3" /> : <FileText className="w-3 h-3" />}>
+                    {kindLabel(result.kind)}
+                    {result.fileCount ? ` · ${result.fileCount} files` : ""}
+                  </Chip>
                   <Chip icon={<Clock className="w-3 h-3" />}>{expiryLabel(result.expiry)}</Chip>
                   <Chip icon={<Lock className="w-3 h-3" />}>{result.password ? "Password protected" : "Public link"}</Chip>
                 </div>
@@ -210,7 +377,7 @@ export function ShareUploadForm() {
               <div className="ml-auto" />
               <button
                 type="button"
-                onClick={() => { setResult(null); setFile(null); setRawHtml(""); setPwd(""); setTitle(""); }}
+                onClick={() => { setResult(null); setFile(null); setRawHtml(""); setPwd(""); setTitle(""); setBundle([]); }}
                 className="px-4 py-2 rounded-lg text-[13px] text-foreground/70 hover:text-foreground inline-flex items-center gap-1.5"
               >
                 <Share2 className="w-4 h-4" /> Share another file
@@ -222,7 +389,7 @@ export function ShareUploadForm() {
             <div className="mb-6">
               <h1 className="text-[24px] font-semibold tracking-tight">Share a file</h1>
               <p className="text-[13px] text-foreground/55 mt-1">
-                Upload an existing deck, paste raw HTML, or share a PDF — protected by an optional password and expiry. No AI involved.
+                Upload an existing deck, a whole folder of pages, raw HTML or a PDF — protected by an optional password and expiry. No AI involved.
               </p>
             </div>
 
@@ -230,12 +397,62 @@ export function ShareUploadForm() {
               {/* Source tabs */}
               <div className="flex gap-1 p-1 rounded-lg bg-[rgb(var(--fg)/0.04)] w-fit">
                 <TabBtn active={tab === "html_file"} onClick={() => setTab("html_file")}><Upload className="w-3.5 h-3.5" /> HTML file</TabBtn>
+                <TabBtn active={tab === "folder"} onClick={() => setTab("folder")}><FolderTree className="w-3.5 h-3.5" /> Folder</TabBtn>
                 <TabBtn active={tab === "pdf"} onClick={() => setTab("pdf")}><FileText className="w-3.5 h-3.5" /> PDF</TabBtn>
                 <TabBtn active={tab === "html_raw"} onClick={() => setTab("html_raw")}><Code className="w-3.5 h-3.5" /> Raw HTML</TabBtn>
               </div>
 
               {/* Source input */}
-              {tab === "html_raw" ? (
+              {tab === "folder" ? (
+                <div
+                  onDragEnter={(e) => { e.preventDefault(); setDrag(true); }}
+                  onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                  onDragLeave={() => setDrag(false)}
+                  onDrop={(e) => { e.preventDefault(); setDrag(false); void onDropBundle(e.dataTransfer); }}
+                  className={
+                    "rounded-xl border-2 border-dashed p-8 text-center transition-smooth " +
+                    (drag ? "border-[rgb(var(--primary))] bg-[rgb(var(--primary)/0.04)]" : "border-border bg-[rgb(var(--fg)/0.02)]")
+                  }
+                >
+                  <FolderTree className="w-6 h-6 text-foreground/40 mx-auto mb-2" />
+                  {bundle.length > 0 ? (
+                    <>
+                      <p className="text-[13px] mb-1">
+                        <span className="font-medium">{bundle.length} files</span> · {formatBytes(bundleBytes)}
+                      </p>
+                      <p className="text-[11px] text-foreground/45 mb-3">
+                        {bundleEntry
+                          ? <>Opens on <span className="font-mono">{bundleEntry}</span> — relative links and assets keep working</>
+                          : <span className="text-[rgb(var(--error))]">No index.html at the folder root — pick the folder that contains it</span>}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[13px] mb-1">Drop a folder here</p>
+                      <p className="text-[11px] text-foreground/45 mb-3">
+                        Every file is served together, so sub-pages and assets resolve as they do on disk
+                      </p>
+                    </>
+                  )}
+                  <label className="inline-flex items-center px-3 py-1.5 rounded-md border border-border bg-card hover:bg-[rgb(var(--fg)/0.04)] text-[12px] cursor-pointer">
+                    {bundle.length > 0 ? "Choose a different folder" : "Choose folder"}
+                    <input
+                      ref={(el) => {
+                        // React has no typed prop for these; the picker needs
+                        // both spellings to select a directory across browsers.
+                        if (el) {
+                          el.setAttribute("webkitdirectory", "");
+                          el.setAttribute("directory", "");
+                        }
+                      }}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => onPickFolder(e.target.files)}
+                    />
+                  </label>
+                </div>
+              ) : tab === "html_raw" ? (
                 <textarea
                   value={rawHtml}
                   onChange={(e) => setRawHtml(e.target.value)}
@@ -321,11 +538,22 @@ export function ShareUploadForm() {
                 <button
                   type="button"
                   onClick={onSubmit}
-                  disabled={pending || (tab === "html_raw" ? !rawHtml.trim() : !file)}
+                  disabled={
+                    pending ||
+                    (tab === "html_raw"
+                      ? !rawHtml.trim()
+                      : tab === "folder"
+                        ? !bundleEntry
+                        : !file)
+                  }
                   className="btn-primary"
                 >
                   <Share2 className="w-4 h-4" />
-                  {pending ? "Creating link…" : "Create share link"}
+                  {progress
+                    ? `Uploading ${progress.done} / ${progress.total}…`
+                    : pending
+                      ? "Creating link…"
+                      : "Create share link"}
                 </button>
               </div>
             </div>

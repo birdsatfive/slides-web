@@ -9,13 +9,15 @@ interface Props {
   shareLinkId: string;
   /** PDF-backed shares must not sandbox the iframe — see below. */
   isPdf?: boolean;
+  /** Folder shares navigate between their own pages inside the frame. */
+  isBundle?: boolean;
 }
 
 /**
  * Public deck viewer. Streams the rendered HTML inside a sandboxed iframe and
  * heart-beats `/api/share/track` every 15s so we know who watched what.
  */
-export function ShareViewer({ title, htmlUrl, shareLinkId, isPdf = false }: Props) {
+export function ShareViewer({ title, htmlUrl, shareLinkId, isPdf = false, isBundle = false }: Props) {
   const sessionRef = useRef<string>("");
   const [activeSlideId, setActiveSlideId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>("");
@@ -79,7 +81,16 @@ export function ShareViewer({ title, htmlUrl, shareLinkId, isPdf = false }: Prop
         src={htmlUrl}
         title={title}
         className="w-full h-full border-0"
-        sandbox={isPdf ? undefined : "allow-scripts allow-same-origin"}
+        sandbox={
+          isPdf
+            ? undefined
+            : isBundle
+              // Folder shares are whole small sites: they submit forms, open
+              // external links and offer downloads. Still no top-level
+              // navigation, so the frame can never take over the page.
+              ? "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
+              : "allow-scripts allow-same-origin"
+        }
       />
       {sessionId && (
         <CommentsPanel

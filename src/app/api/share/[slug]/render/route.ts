@@ -53,10 +53,19 @@ export async function GET(
   const { data: version } = await svc
     .schema("slides")
     .from("deck_versions")
-    .select("html_path")
+    .select("html_path, generation_meta")
     .eq("id", versionId)
     .single();
   if (!version?.html_path) return NextResponse.json({ error: "not designed" }, { status: 404 });
+
+  // Folder shares must be served from /f/, which acts as their document root.
+  // Streaming the entry page from here would strand every relative link.
+  const meta = (version.generation_meta ?? {}) as Record<string, unknown>;
+  if (meta.kind === "html_bundle") {
+    const entry = typeof meta.entry === "string" && meta.entry ? meta.entry : "index.html";
+    const target = `/api/share/${slug}/f/${entry}${pw ? `?pw=${encodeURIComponent(pw)}` : ""}`;
+    return NextResponse.redirect(new URL(target, request.url), 307);
+  }
 
   // Share-only PDFs: emit a tiny HTML wrapper that embeds the PDF via the
   // sibling /asset route. Same auth (slug + pw) gates both endpoints.

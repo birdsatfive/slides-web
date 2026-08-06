@@ -177,6 +177,188 @@ export async function createSharedFile(input: {
   return { slug: link.slug, deckId: deck.id, password: input.password };
 }
 
+/**
+ * Folder share, step 1 — reserve the deck, version and link before any bytes
+ * move. Files are uploaded one request at a time (see `uploadBundleFile`) so
+ * a large folder never rides on a single request body.
+ */
+export async function createBundleShare(input: {
+  title: string;
+  entry: string;
+  fileCount: number;
+  password?: string;
+  expiresIn?: "24h" | "7d" | "30d" | "never";
+}): Promise<{ slug: string; deckId: string; versionId: string; password?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("not authenticated");
+
+  const entry = sanitizeRelPath(input.entry);
+  if (!entry || !/\.html?$/i.test(entry)) throw new Error("entry must be an .html file");
+
+  const orgId = resolveOrgId(user.app_metadata as Record<string, unknown> | undefined);
+  const svc = createServiceClient();
+
+  const { data: deck, error: dErr } = await svc
+    .schema("slides")
+    .from("decks")
+    .insert({
+      org_id: orgId,
+      owner_id: user.id,
+      title: input.title || "Shared folder",
+      source_kind: "shared_bundle",
+      source_ref: entry,
+    })
+    .select("id")
+    .single();
+  if (dErr || !deck) throw new Error(dErr?.message ?? "deck insert failed");
+
+  const { data: version, error: vErr } = await svc
+    .schema("slides")
+    .from("deck_versions")
+    .insert({
+      deck_id: deck.id,
+      label: "Uploaded",
+      slide_tree: [],
+      generation_meta: {
+        share_only: true,
+        kind: "html_bundle",
+        entry,
+        file_count: input.fileCount,
+      },
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
+  if (vErr || !version) throw new Error(vErr?.message ?? "version insert failed");
+
+  // html_path points at the entry document; everything before the last slash
+  // is the bundle root the /f/ route serves from.
+  const htmlPath = `${deck.id}/${version.id}/${entry}`;
+  const { error: vUpdErr } = await svc
+    .schema("slides")
+    .from("deck_versions")
+    .update({ html_path: htmlPath })
+    .eq("id", version.id);
+  if (vUpdErr) throw new Error(`version update failed: ${vUpdErr.message}`);
+
+  const { error: dUpdErr } = await svc
+    .schema("slides")
+    .from("decks")
+    .update({ current_version_id: version.id })
+    .eq("id", deck.id);
+  if (dUpdErr) throw new Error(`deck update failed: ${dUpdErr.message}`);
+
+  const { data: link, error: lErr } = await svc
+    .schema("slides")
+    .from("share_links")
+    .insert({
+      deck_id: deck.id,
+      version_id: version.id,
+      slug: slug(),
+      password_hash: input.password ? createHash("sha256").update(input.password).digest("hex") : null,
+      expires_at: expiryFromInput(input.expiresIn),
+      created_by: user.id,
+    })
+    .select("slug")
+    .single();
+  if (lErr || !link) throw new Error(lErr?.message ?? "share link insert failed");
+
+  revalidatePath("/");
+  return { slug: link.slug, deckId: deck.id, versionId: version.id, password: input.password };
+}
+
+/**
+ * Folder share, step 2 — upload one file of the bundle at its path relative
+ * to the folder root.
+ */
+export async function uploadBundleFile(input: {
+  deckId: string;
+  versionId: string;
+  relPath: string;
+  file: File;
+}): Promise<{ ok: true }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("not authenticated");
+
+  const rel = sanitizeRelPath(input.relPath);
+  if (!rel) throw new Error(`invalid path: ${input.relPath}`);
+
+  const svc = createServiceClient();
+
+  // The version must belong to a deck this user owns — the deck id alone is
+  // caller-supplied, so it is never trusted on its own.
+  const { data: version } = await svc
+    .schema("slides")
+    .from("deck_versions")
+    .select("id, deck_id, decks!inner(owner_id)")
+    .eq("id", input.versionId)
+    .eq("deck_id", input.deckId)
+    .single();
+  const owner = (version as { decks?: { owner_id?: string } } | null)?.decks?.owner_id;
+  if (!version || owner !== user.id) throw new Error("not your bundle");
+
+  const bytes = Buffer.from(await input.file.arrayBuffer());
+  const contentType =
+    mimeFromPath(rel) ?? (input.file.type || "application/octet-stream");
+
+  const { error } = await svc.storage
+    .from("slides-html")
+    .upload(`${input.deckId}/${input.versionId}/${rel}`, bytes, {
+      contentType,
+      upsert: true,
+    });
+  if (error) throw new Error(`upload failed (${rel}): ${error.message}`);
+
+  return { ok: true };
+}
+
+/** Strip anything that could escape the bundle root; null when unusable. */
+function sanitizeRelPath(raw: string): string | null {
+  const parts = raw
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter((s) => s.length > 0 && s !== ".");
+  if (parts.length === 0) return null;
+  if (parts.some((s) => s === ".." || s.includes("\0"))) return null;
+  const path = parts.join("/");
+  return path.length > 1024 ? null : path;
+}
+
+/**
+ * Content type by extension. Browsers get the type from Storage metadata on
+ * the way back out, and `File.type` is empty for plenty of web assets
+ * (.woff2, .mjs) — so the extension decides wherever it can.
+ */
+function mimeFromPath(path: string): string | null {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    html: "text/html; charset=utf-8",
+    htm: "text/html; charset=utf-8",
+    css: "text/css; charset=utf-8",
+    js: "text/javascript; charset=utf-8",
+    mjs: "text/javascript; charset=utf-8",
+    json: "application/json; charset=utf-8",
+    svg: "image/svg+xml",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    avif: "image/avif",
+    ico: "image/x-icon",
+    woff: "font/woff",
+    woff2: "font/woff2",
+    ttf: "font/ttf",
+    otf: "font/otf",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    pdf: "application/pdf",
+  };
+  return map[ext] ?? null;
+}
+
 export async function exportDeckToPdf(deckId: string, versionId: string): Promise<{ url: string }> {
   // Fetch the rendered HTML from storage, ship it to /v1/export/pdf, return signed URL.
   const svc = createServiceClient();

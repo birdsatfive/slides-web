@@ -58,14 +58,23 @@ export default async function ShareLinkPage({
   const { data: version } = await svc
     .schema("slides")
     .from("deck_versions")
-    .select("html_path")
+    .select("html_path, generation_meta")
     .eq("id", versionId)
     .single();
   if (!version?.html_path) notFound();
 
+  const meta = (version.generation_meta ?? {}) as Record<string, unknown>;
+  const isBundle = meta.kind === "html_bundle";
+
   // Iframe through our own proxy so Content-Type is text/html (Supabase
   // Storage serves text/plain by default, breaking the iframe render).
-  const htmlUrl = `/api/share/${slug}/render${pw ? `?pw=${encodeURIComponent(pw)}` : ""}`;
+  // Folder shares point at the entry document inside /f/, which makes that
+  // path the document root — relative sub-page links and assets then resolve
+  // against the bundle instead of against this route.
+  const entry = typeof meta.entry === "string" && meta.entry ? meta.entry : "index.html";
+  const htmlUrl = isBundle
+    ? `/api/share/${slug}/f/${entry}${pw ? `?pw=${encodeURIComponent(pw)}` : ""}`
+    : `/api/share/${slug}/render${pw ? `?pw=${encodeURIComponent(pw)}` : ""}`;
 
   // PDFs are rendered by the browser's built-in PDF viewer, which counts as
   // plugin content. A sandboxed iframe unconditionally blocks plugins (no
@@ -73,7 +82,15 @@ export default async function ShareLinkPage({
   // ShareViewer must drop the sandbox for PDF-backed shares.
   const isPdf = version.html_path.endsWith(".pdf");
 
-  return <ShareViewer title={title} htmlUrl={htmlUrl} shareLinkId={link.id} isPdf={isPdf} />;
+  return (
+    <ShareViewer
+      title={title}
+      htmlUrl={htmlUrl}
+      shareLinkId={link.id}
+      isPdf={isPdf}
+      isBundle={isBundle}
+    />
+  );
 }
 
 function PasswordGate({ slug }: { slug: string }) {
