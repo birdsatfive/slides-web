@@ -290,14 +290,20 @@ export async function uploadBundleFile(input: {
 
   // The version must belong to a deck this user owns — the deck id alone is
   // caller-supplied, so it is never trusted on its own.
-  const { data: version } = await svc
+  //
+  // The relationship is named explicitly: decks points back at deck_versions
+  // through current_version_id, so a bare `decks(...)` embed is ambiguous and
+  // PostgREST rejects the whole query (PGRST201) rather than picking one.
+  const { data: version, error: vErr } = await svc
     .schema("slides")
     .from("deck_versions")
-    .select("id, deck_id, decks!inner(owner_id)")
+    .select("id, deck_id, decks!deck_versions_deck_id_fkey!inner(owner_id)")
     .eq("id", input.versionId)
     .eq("deck_id", input.deckId)
     .single();
-  const owner = (version as { decks?: { owner_id?: string } } | null)?.decks?.owner_id;
+  if (vErr) throw new Error(`bundle lookup failed: ${vErr.message}`);
+  const deck = (version as { decks?: { owner_id?: string } | { owner_id?: string }[] } | null)?.decks;
+  const owner = Array.isArray(deck) ? deck[0]?.owner_id : deck?.owner_id;
   if (!version || owner !== user.id) throw new Error("not your bundle");
 
   const bytes = Buffer.from(await input.file.arrayBuffer());
