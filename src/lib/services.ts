@@ -5,7 +5,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   LineChart,
-  Presentation,
+  Link2,
   Sparkles,
 } from "lucide-react";
 
@@ -53,11 +53,11 @@ export const BAF_SERVICES: BafService[] = [
     accent: "#5a8a66",
   },
   {
-    id: "slides",
-    name: "Slides",
-    description: "AI decks & presentations",
-    url: "https://slides.birdsatfive.dk",
-    icon: Presentation,
+    id: "share",
+    name: "Share",
+    description: "Files behind a link",
+    url: "https://share.birdsatfive.dk",
+    icon: Link2,
     accent: "#F58ED3",
     self: true,
   },

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Slides — BirdsAtFive",
-  description: "AI decks & presentations",
+  title: "Share — BirdsAtFive",
+  description: "Share files behind a link",
 };
 
 export default function RootLayout({

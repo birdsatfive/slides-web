@@ -83,16 +83,7 @@ export async function GET(
     return NextResponse.json({ error: error?.message ?? "download failed" }, { status: 502 });
   }
 
-  const { data: edits } = await svc
-    .schema("slides")
-    .from("deck_text_edits")
-    .select("slide_id, element_index, new_text")
-    .eq("version_id", versionId);
-
-  let html = await blob.text();
-  if (edits && edits.length > 0) {
-    html = injectEditsScript(html, edits);
-  }
+  const html = await blob.text();
 
   return new NextResponse(html, {
     status: 200,
@@ -108,41 +99,4 @@ function pdfWrapperHtml(src: string): string {
 <html><head><meta charset="utf-8"><title>Shared PDF</title>
 <style>html,body{margin:0;height:100%;background:#0f0d10}embed,iframe{width:100%;height:100%;border:0;display:block}</style>
 </head><body><embed src="${src}" type="application/pdf"></body></html>`;
-}
-
-/**
- * Apply persisted inline text edits to the served HTML by appending a
- * tiny in-page script. The script tags every editable element with its
- * index inside the slide (the same scheme the editor uses) and then
- * patches textContent for any matching edit.
- */
-function injectEditsScript(
-  html: string,
-  edits: { slide_id: string; element_index: number; new_text: string }[],
-): string {
-  const payload = JSON.stringify(edits);
-  const script = `<script>(function(){
-    var EDITS = ${payload};
-    var SEL = "h1,h2,h3,h4,h5,h6,p,li,blockquote,.slide-heading,.slide-label,.slide-stat-label";
-    function apply(){
-      var slides = document.querySelectorAll(".slide, section.slide");
-      slides.forEach(function(slide){
-        var sid = slide.getAttribute("data-slide-id");
-        if (!sid) return;
-        var els = slide.querySelectorAll(SEL);
-        els.forEach(function(el, i){
-          el.setAttribute("data-edit-slide-id", sid);
-          el.setAttribute("data-edit-index", String(i));
-        });
-      });
-      EDITS.forEach(function(e){
-        var el = document.querySelector("[data-edit-slide-id='" + e.slide_id + "'][data-edit-index='" + e.element_index + "']");
-        if (el) el.textContent = e.new_text;
-      });
-    }
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply);
-    else apply();
-  })();</script>`;
-  if (html.includes("</body>")) return html.replace("</body>", script + "</body>");
-  return html + script;
 }

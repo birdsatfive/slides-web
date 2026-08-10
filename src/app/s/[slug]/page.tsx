@@ -44,7 +44,7 @@ export async function generateMetadata({
 
   // Absolute URLs — link unfurlers reject relative ones.
   const h = await headers();
-  const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "slides.birdsatfive.dk"}`;
+  const origin = `${h.get("x-forwarded-proto") ?? "https"}://${h.get("host") ?? "share.birdsatfive.dk"}`;
   const url = `${origin}/s/${slug}`;
 
   // A protected share still shows the name it was given — that title is the
@@ -60,7 +60,7 @@ export async function generateMetadata({
         title: protectedTitle,
         description: "Password protected",
         url,
-        siteName: "Slides — BirdsAtFive",
+        siteName: "Share — BirdsAtFive",
         type: "website",
       },
     };
@@ -114,7 +114,7 @@ export async function generateMetadata({
       title,
       description,
       url,
-      siteName: "Slides — BirdsAtFive",
+      siteName: "Share — BirdsAtFive",
       type: "website",
       ...(image ? { images: [{ url: image }] } : {}),
     },
@@ -156,7 +156,7 @@ export default async function ShareLinkPage({
 
   // Resolve which version to show: explicit version on the link, else deck's current.
   let versionId = link.version_id;
-  let title = "Slides";
+  let title = "Shared file";
   if (!versionId) {
     const { data: deck } = await svc
       .schema("slides")
@@ -165,7 +165,7 @@ export default async function ShareLinkPage({
       .eq("id", link.deck_id)
       .single();
     versionId = deck?.current_version_id ?? null;
-    title = deck?.title ?? "Slides";
+    title = deck?.title ?? "Shared file";
   } else {
     const { data: deck } = await svc
       .schema("slides")
@@ -173,7 +173,7 @@ export default async function ShareLinkPage({
       .select("title")
       .eq("id", link.deck_id)
       .single();
-    title = deck?.title ?? "Slides";
+    title = deck?.title ?? "Shared file";
   }
 
   if (!versionId) notFound();
@@ -225,7 +225,7 @@ function PasswordGate({ slug }: { slug: string }) {
       >
         <h1 className="text-[18px] font-semibold mb-1">Password protected</h1>
         <p className="text-[12px] text-foreground/55 mb-4">
-          Ask the sender for the password to view this deck.
+          Ask the sender for the password to open this file.
         </p>
         <input
           name="pw"
@@ -239,7 +239,7 @@ function PasswordGate({ slug }: { slug: string }) {
           type="submit"
           className="btn-primary mt-3 w-full"
         >
-          View deck
+          View file
         </button>
       </form>
     </div>

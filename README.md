@@ -1,52 +1,45 @@
 # slides-web
 
-`slides.birdsatfive.dk` — AI deck & presentation product. Pairs with the
-`slides-api` Python render service (refactored from `/Users/marius/slides-server`)
-which handles extraction, generation, screenshot rendering and PDF export.
+`share.birdsatfive.dk` — internal file sharing. Drop in an HTML file, a whole
+folder of pages, raw HTML or a PDF and get a link that opens in any browser,
+with an optional password and expiry.
+
+The repo keeps its `slides-web` name (and the `slides` Postgres schema) from
+when this app was the AI deck builder — that half was removed on 2026-08-10.
+`slides.birdsatfive.dk` stays attached to the app and 308-redirects to
+`share.birdsatfive.dk`, so links already sent to clients keep resolving.
 
 ## Stack
 
 - Next.js 16.1 (App Router) + React 19 + TypeScript
-- Tailwind CSS v4 + custom design tokens (mirrors ops)
+- Tailwind CSS v4 + vendored Birdie design system (see `.birdie-design.json`)
 - Supabase SSR auth (self-hosted at `supabase.birdsatfive.dk`) — cookies on
-  `.birdsatfive.dk` give SSO across all BAF apps
-- Radix UI primitives + lucide-react icons
-- Tanstack Query for client-side data
-- Deployed on Vercel; render service deploys to Coolify on Hetzner
+  `.birdsatfive.dk` give SSO across all BAF apps. Login is gated to
+  `@birdsatfive.dk` / `@birdie.studio`
+- Storage: one `slides-html` bucket, keyed `{fileId}/{versionId}[/relPath]`
+- Deployed on Coolify (Hetzner), auto-deploys from `main`
+
+## Routes
+
+| Route | Who | What |
+| --- | --- | --- |
+| `/` | team | Library of shared files: link state, views, copy, delete |
+| `/share/new` | team | Upload → link, with password + expiry |
+| `/f/[id]` | team | One file: its links, view sessions, comments |
+| `/s/[slug]` | public | The viewer. Password gate, then the file in an iframe |
+| `/api/share/[slug]/render` | public | Streams the file with the right Content-Type |
+| `/api/share/[slug]/f/[...path]` | public | Serves a folder share; this path is its document root |
+| `/api/share/[slug]/asset` | public | The raw bytes behind a PDF share |
 
 ## Local dev
 
 ```sh
 cp .env.local.example .env.local
 # fill in NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY,
-# AZURE_CLIENT_SECRET, SLIDES_API_JWT_SECRET (any 256-bit random string)
+# AZURE_CLIENT_SECRET
 npm install
-npm run dev   # http://localhost:3001
+npm run dev   # http://127.0.0.1:3001
 ```
 
-The first time you run, apply the Supabase migration:
-
-```sh
-psql "$DATABASE_URL" -f supabase/migrations/20260430_slides_schema.sql
-```
-
-## Architecture
-
-```
-slides.birdsatfive.dk     →  Vercel (this repo)
-                              auth, library, editor, template gallery, share viewer
-slides-api.birdsatfive.dk →  Coolify/Hetzner (refactored slides-server)
-                              extract → generate → render endpoints, stateless
-Supabase (studio-api)     →  shared with ops; `slides` schema + storage buckets
-```
-
-The render service does not have public auth. Next.js server actions sign a
-short-lived HS256 JWT with `SLIDES_API_JWT_SECRET` carrying `{ user_id, org_id }`
-and call `SLIDES_API_URL` directly. The API uploads artifacts to Supabase
-storage with the service-role key.
-
-## Plan
-
-Full delivery plan at
-`/Users/marius/.claude/plans/sequential-inventing-parrot.md`. We are
-mid-Phase-1.
+Migrations live in `supabase/migrations` and are applied with psql against the
+self-hosted database.

@@ -1,32 +1,50 @@
 "use client";
 
-import { ArrowRight, Clock, DollarSign, Eye, Palette, Plus, Presentation, Search, Share2, Sparkles, Trash2, Upload } from "lucide-react";
+import {
+  Check,
+  Clock,
+  Copy,
+  ExternalLink,
+  Eye,
+  FileText,
+  FolderTree,
+  Link2,
+  Lock,
+  Search,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useState, useTransition } from "react";
 import { AppSwitcher } from "@/components/layout/AppSwitcher";
-import { archiveDeck } from "@/lib/decks/actions";
+import { deleteSharedFile } from "@/lib/share/actions";
+import { fileKindLabel, type FileKind } from "@/lib/share/kind";
 
-export interface DeckRow {
+export interface SharedFileRow {
   id: string;
   title: string;
   updated_at: string;
-  template_id: string | null;
-  starred: boolean;
-  is_designed: boolean;
-  live_links: number;
+  kind: FileKind;
+  /** Files inside a folder share; null for single files. */
+  file_count: number | null;
+  /** Slug of the current live link, or null once every link is dead. */
+  slug: string | null;
+  protected: boolean;
+  expires_at: string | null;
+  live: boolean;
   total_views: number;
 }
 
 interface Props {
-  decks: DeckRow[];
+  files: SharedFileRow[];
   userName: string;
   userEmail: string;
 }
 
-export function LibraryView({ decks, userName, userEmail }: Props) {
+export function FileLibrary({ files, userName, userEmail }: Props) {
   const [query, setQuery] = useState("");
 
-  const filtered = decks.filter((d) =>
-    d.title.toLowerCase().includes(query.toLowerCase()),
+  const filtered = files.filter((f) =>
+    f.title.toLowerCase().includes(query.toLowerCase()),
   );
 
   return (
@@ -38,17 +56,11 @@ export function LibraryView({ decks, userName, userEmail }: Props) {
               className="w-7 h-7 rounded-lg flex items-center justify-center"
               style={{ background: "linear-gradient(135deg, #76195c, #5e0842)" }}
             >
-              <Presentation className="w-4 h-4 text-white" strokeWidth={2.25} />
+              <Link2 className="w-4 h-4 text-white" strokeWidth={2.25} />
             </div>
-            <span className="font-semibold tracking-tight">Slides</span>
+            <span className="font-semibold tracking-tight">Share</span>
           </div>
-          <a href="/admin/cost" className="ml-auto px-3 py-1.5 rounded-md text-[12px] text-foreground/65 hover:text-foreground hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5" /> Cost
-          </a>
-          <a href="/brand" className="px-3 py-1.5 rounded-md text-[12px] text-foreground/65 hover:text-foreground hover:bg-[rgb(var(--fg)/0.04)] inline-flex items-center gap-1.5">
-            <Palette className="w-3.5 h-3.5" /> Brand Kits
-          </a>
-          <span className="text-foreground/65 text-[12px] truncate max-w-[180px]" title={userEmail}>
+          <span className="ml-auto text-foreground/65 text-[12px] truncate max-w-[180px]" title={userEmail}>
             {userName || userEmail}
           </span>
           <AppSwitcher />
@@ -58,28 +70,15 @@ export function LibraryView({ decks, userName, userEmail }: Props) {
       <main className="mx-auto max-w-[1400px] px-6 py-8">
         <div className="flex items-end justify-between mb-6">
           <div>
-            <h1 className="text-[24px] font-semibold tracking-tight">Library</h1>
+            <h1 className="text-[24px] font-semibold tracking-tight">Shared files</h1>
             <p className="text-[13px] text-foreground/50 mt-1">
-              Your team&apos;s decks. Create from a prompt, a doc, or a URL.
+              Everything your team has put behind a link.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <a
-              href="/share/new"
-              className="btn-secondary btn-sm"
-              title="Upload an existing file and get a share link"
-            >
-              <Upload className="w-4 h-4" />
-              Share a file
-            </a>
-            <a
-              href="/new"
-              className="btn-primary"
-            >
-              <Plus className="w-4 h-4" />
-              New deck
-            </a>
-          </div>
+          <a href="/share/new" className="btn-primary">
+            <Upload className="w-4 h-4" />
+            Share a file
+          </a>
         </div>
 
         <div className="relative mb-5">
@@ -88,34 +87,33 @@ export function LibraryView({ decks, userName, userEmail }: Props) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search decks…"
+            placeholder="Search files…"
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-card text-[13px] outline-none focus:border-[rgb(var(--primary))] focus:ring-2 focus:ring-[rgb(var(--primary)/0.2)] transition-smooth"
           />
         </div>
 
-        {filtered.length === 0 ? <EmptyState /> : <DeckTable decks={filtered} />}
+        {filtered.length === 0 ? <EmptyState searching={query.length > 0} /> : <FileTable files={filtered} />}
       </main>
     </div>
   );
 }
 
-function DeckTable({ decks }: { decks: DeckRow[] }) {
+function FileTable({ files }: { files: SharedFileRow[] }) {
   return (
     <div className="panel-card overflow-hidden">
       <table className="w-full text-[13px]">
         <thead className="bg-[rgb(var(--fg)/0.03)] text-foreground/55">
           <tr>
-            <th className="text-left px-4 py-2.5 font-medium text-[11px] uppercase tracking-wider">Deck</th>
-            <th className="text-left px-4 py-2.5 font-medium text-[11px] uppercase tracking-wider w-[140px]">Status</th>
+            <th className="text-left px-4 py-2.5 font-medium text-[11px] uppercase tracking-wider">File</th>
+            <th className="text-left px-4 py-2.5 font-medium text-[11px] uppercase tracking-wider w-[220px]">Link</th>
             <th className="text-right px-4 py-2.5 font-medium text-[11px] uppercase tracking-wider w-[80px]">Views</th>
-            <th className="text-right px-4 py-2.5 font-medium text-[11px] uppercase tracking-wider w-[80px]">Shares</th>
             <th className="text-right px-4 py-2.5 font-medium text-[11px] uppercase tracking-wider w-[120px]">Updated</th>
-            <th className="w-[110px] px-4 py-2.5"></th>
+            <th className="w-[220px] px-4 py-2.5"></th>
           </tr>
         </thead>
         <tbody>
-          {decks.map((deck) => (
-            <DeckTr key={deck.id} deck={deck} />
+          {files.map((file) => (
+            <FileTr key={file.id} file={file} />
           ))}
         </tbody>
       </table>
@@ -123,49 +121,62 @@ function DeckTable({ decks }: { decks: DeckRow[] }) {
   );
 }
 
-function DeckTr({ deck }: { deck: DeckRow }) {
+function FileTr({ file }: { file: SharedFileRow }) {
   const [pending, start] = useTransition();
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const Icon = file.kind === "folder" ? FolderTree : FileText;
 
-  function onDelete(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!window.confirm(`Delete "${deck.title}"?`)) return;
+  function onDelete() {
+    if (!window.confirm(`Delete "${file.title}"? The link stops working immediately.`)) return;
     start(async () => {
-      try { await archiveDeck(deck.id); }
+      try { await deleteSharedFile(file.id); }
       catch (err) { setError(err instanceof Error ? err.message : String(err)); }
     });
+  }
+
+  function onCopy() {
+    if (!file.slug) return;
+    navigator.clipboard?.writeText(`${window.location.origin}/s/${file.slug}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
 
   return (
     <tr className="border-t border-border/60 group hover:bg-[rgb(var(--primary)/0.04)] transition-smooth">
       <td className="px-4 py-3">
-        <a href={`/d/${deck.id}`} className="inline-flex items-center gap-2.5 max-w-full">
+        <a href={`/f/${file.id}`} className="inline-flex items-center gap-2.5 max-w-full">
           <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-[rgb(var(--primary)/0.12)]">
-            <Presentation className="w-3.5 h-3.5 text-[rgb(var(--primary))]" />
+            <Icon className="w-3.5 h-3.5 text-[rgb(var(--primary))]" />
           </div>
-          <span className="font-medium truncate group-hover:text-foreground">{deck.title}</span>
+          <span className="min-w-0">
+            <span className="font-medium truncate group-hover:text-foreground block">{file.title}</span>
+            <span className="text-[11px] text-foreground/45">
+              {fileKindLabel(file.kind)}
+              {file.file_count ? ` · ${file.file_count} files` : ""}
+            </span>
+          </span>
         </a>
         {error && <p className="mt-1 text-[10px] text-[rgb(var(--error))]">{error}</p>}
       </td>
       <td className="px-4 py-3">
-        <StatusBadge deck={deck} />
+        <div className="flex flex-wrap items-center gap-1">
+          {file.live ? <Pill tone="success">Live</Pill> : <Pill tone="muted">Link off</Pill>}
+          {file.protected && (
+            <Pill tone="primary">
+              <Lock className="w-2.5 h-2.5" /> Password
+            </Pill>
+          )}
+          {file.live && file.expires_at && (
+            <Pill tone="muted">Until {new Date(file.expires_at).toLocaleDateString()}</Pill>
+          )}
+        </div>
       </td>
       <td className="px-4 py-3 text-right tabular-nums text-foreground/70">
-        {deck.total_views > 0 ? (
+        {file.total_views > 0 ? (
           <span className="inline-flex items-center gap-1 text-foreground/75">
             <Eye className="w-3 h-3 text-foreground/40" />
-            {deck.total_views}
-          </span>
-        ) : (
-          <span className="text-foreground/30">—</span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-right tabular-nums text-foreground/70">
-        {deck.live_links > 0 ? (
-          <span className="inline-flex items-center gap-1 text-foreground/75">
-            <Share2 className="w-3 h-3 text-foreground/40" />
-            {deck.live_links}
+            {file.total_views}
           </span>
         ) : (
           <span className="text-foreground/30">—</span>
@@ -174,22 +185,33 @@ function DeckTr({ deck }: { deck: DeckRow }) {
       <td className="px-4 py-3 text-right tabular-nums text-foreground/55 whitespace-nowrap">
         <span className="inline-flex items-center gap-1">
           <Clock className="w-3 h-3 text-foreground/30" />
-          {fmtDate(deck.updated_at)}
+          {fmtDate(file.updated_at)}
         </span>
       </td>
       <td className="px-4 py-3 text-right">
         <div className="inline-flex items-center gap-1">
-          <a
-            href={`/d/${deck.id}`}
-            className="btn-primary"
-          >
-            Open <ArrowRight className="w-3 h-3" />
-          </a>
+          {file.slug && (
+            <>
+              <button type="button" onClick={onCopy} className="btn-secondary btn-sm whitespace-nowrap">
+                {copied ? <Check className="w-3.5 h-3.5 text-[rgb(var(--success))]" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? "Copied" : "Copy link"}
+              </button>
+              <a
+                href={`/s/${file.slug}`}
+                target="_blank"
+                rel="noreferrer"
+                title="Open the shared link"
+                className="w-7 h-7 rounded-md inline-flex items-center justify-center text-foreground/45 hover:text-foreground hover:bg-[rgb(var(--fg)/0.06)] transition-smooth"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </>
+          )}
           <button
             type="button"
             onClick={onDelete}
             disabled={pending}
-            title="Delete deck"
+            title="Delete file"
             className="w-7 h-7 rounded-md inline-flex items-center justify-center text-foreground/45 hover:text-[rgb(var(--error))] hover:bg-[rgb(var(--error)/0.08)] opacity-0 group-hover:opacity-100 transition-smooth disabled:opacity-60"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -198,16 +220,6 @@ function DeckTr({ deck }: { deck: DeckRow }) {
       </td>
     </tr>
   );
-}
-
-function StatusBadge({ deck }: { deck: DeckRow }) {
-  if (!deck.is_designed) {
-    return <Pill tone="muted">Draft</Pill>;
-  }
-  if (deck.live_links > 0) {
-    return <Pill tone="primary">Shared</Pill>;
-  }
-  return <Pill tone="success">Designed</Pill>;
 }
 
 function Pill({ tone, children }: { tone: "muted" | "primary" | "success"; children: React.ReactNode }) {
@@ -237,20 +249,27 @@ function fmtDate(s: string): string {
   return d.toLocaleDateString();
 }
 
-function EmptyState() {
+function EmptyState({ searching }: { searching: boolean }) {
+  if (searching) {
+    return (
+      <div className="panel-card p-10 text-center text-[13px] text-foreground/50">
+        No file matches that search.
+      </div>
+    );
+  }
   return (
     <div className="panel-card p-12 flex flex-col items-center text-center">
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "linear-gradient(135deg, #F58ED3, #D159A3 52%, #A33278)" }}>
-        <Sparkles className="w-6 h-6 text-white" strokeWidth={2} />
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "linear-gradient(135deg, #76195c, #5e0842)" }}>
+        <Link2 className="w-6 h-6 text-white" strokeWidth={2} />
       </div>
-      <h2 className="text-[16px] font-semibold mb-1">No decks yet</h2>
+      <h2 className="text-[16px] font-semibold mb-1">Nothing shared yet</h2>
       <p className="text-[13px] text-foreground/50 mb-6 max-w-md">
-        Start from a prompt, paste an outline, drop a PPTX, or point at a URL.
-        We&apos;ll generate a designed deck you can edit and share.
+        Drop in an HTML file, a whole folder of pages, or a PDF. You get a link
+        that opens in any browser, with an optional password and expiry.
       </p>
-      <a href="/new" className="btn-primary">
-        <Plus className="w-4 h-4" />
-        Create your first deck
+      <a href="/share/new" className="btn-primary">
+        <Upload className="w-4 h-4" />
+        Share your first file
       </a>
     </div>
   );

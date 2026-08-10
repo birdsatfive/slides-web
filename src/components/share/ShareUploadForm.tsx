@@ -268,7 +268,7 @@ export function ShareUploadForm() {
       <header className="border-b border-border bg-card">
         <div className="mx-auto max-w-[920px] px-6 h-14 flex items-center gap-3">
           <a href="/" className="text-foreground/60 hover:text-foreground inline-flex items-center gap-1 text-[13px]">
-            <ArrowLeft className="w-4 h-4" /> Library
+            <ArrowLeft className="w-4 h-4" /> Files
           </a>
           <span className="font-medium tracking-tight">Share a file</span>
         </div>
@@ -372,7 +372,7 @@ export function ShareUploadForm() {
                 href="/"
                 className="btn-secondary btn-sm"
               >
-                <ArrowLeft className="w-4 h-4" /> Back to library
+                <ArrowLeft className="w-4 h-4" /> Back to files
               </a>
               <div className="ml-auto" />
               <button
@@ -389,7 +389,7 @@ export function ShareUploadForm() {
             <div className="mb-6">
               <h1 className="text-[24px] font-semibold tracking-tight">Share a file</h1>
               <p className="text-[13px] text-foreground/55 mt-1">
-                Upload an existing deck, a whole folder of pages, raw HTML or a PDF — protected by an optional password and expiry. No AI involved.
+                Upload an HTML file, a whole folder of pages, raw HTML or a PDF — protected by an optional password and expiry.
               </p>
             </div>
 

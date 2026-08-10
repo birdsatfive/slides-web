@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Mail, Send, Presentation } from "lucide-react";
+import { Mail, Send, Link2 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -81,13 +81,13 @@ export default function LoginPage() {
               className="mb-3 flex h-12 w-12 items-center justify-center"
               style={{ borderRadius: "12px", background: "rgba(94,8,66,0.10)" }}
             >
-              <Presentation strokeWidth={2} className="text-[#5e0842]" width={24} height={24} />
+              <Link2 strokeWidth={2} className="text-[#5e0842]" width={24} height={24} />
             </div>
             <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: "#2c0a22" }}>
-              Slides
+              Share
             </h1>
             <p className="mt-1 text-[13px]" style={{ color: "rgba(56,5,39,0.5)" }}>
-              BirdsAtFive — AI decks & presentations
+              BirdsAtFive — file sharing
             </p>
           </div>
 
