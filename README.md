@@ -13,9 +13,12 @@ when this app was the AI deck builder — that half was removed on 2026-08-10.
 
 - Next.js 16.1 (App Router) + React 19 + TypeScript
 - Tailwind CSS v4 + vendored Birdie design system (see `.birdie-design.json`)
-- Supabase SSR auth (self-hosted at `supabase.birdsatfive.dk`) — cookies on
-  `.birdsatfive.dk` give SSO across all BAF apps. Login is gated to
-  `@birdsatfive.dk` / `@birdie.studio`
+- Supabase SSR auth (self-hosted at `supabase.birdsatfive.dk`), gated to
+  `@birdsatfive.dk` / `@birdie.studio`. Cookies are host-only (no `domain` is
+  set), so this host does its own OAuth round trip rather than inheriting a
+  session from ops. That means the origin must appear in
+  `ADDITIONAL_REDIRECT_URLS` on the `baf-supabase` Coolify service, or GoTrue
+  drops `redirect_to` and lands the user on `GOTRUE_SITE_URL` (ops)
 - Storage: one `slides-html` bucket, keyed `{fileId}/{versionId}[/relPath]`
 - Deployed on Coolify (Hetzner), auto-deploys from `main`
 
