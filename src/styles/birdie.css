@@ -749,6 +749,39 @@ body::before {
   .empty-state.is-error .ico { background:var(--neg-bg); border-color:transparent; color:var(--neg); }
   .empty-state.is-error h3 { color:var(--neg); }
 
+  /* `is-banner` — the same words, lying down.
+     ────────────────────────────────────────────────────────────────────────
+     The centred column above is right when the empty thing IS the screen: a
+     search with no results, a first-run list. It is wrong when the empty thing
+     is one region of a screen that has other content below it, because a
+     centred column is 260px tall and full-bleed no matter how little it says,
+     and "your queue is empty" — which is good news — then outranks the day's
+     real content and pushes it under the fold.
+
+     A cleared queue should read like a cleared queue: one line, at the top,
+     out of the way. Grid rather than flex because the anatomy is fixed by the
+     component (`.ico`, `h3`, `p`, `.acts` as siblings) and a row needs the
+     title and the sentence stacked in one cell between the icon and the
+     action. Row 2 collapses on its own when there is no `p`.
+
+     Choose it by what the absence is standing in, never by how big the news
+     feels — the same rule the AI block's three boundaries follow. */
+  .empty-state.is-banner { display:grid; grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center; text-align:left; gap:2px 15px; padding:15px 17px; }
+  .card > .empty-state.is-banner { padding:15px 17px; }
+  .empty-state.is-banner .ico { grid-area:1 / 1 / 3 / 2; width:38px; height:38px;
+    border-radius:12px; margin-bottom:0; }
+  .empty-state.is-banner .ico svg { width:17px; height:17px; }
+  .empty-state.is-banner h3 { grid-area:1 / 2 / 2 / 3; }
+  .empty-state.is-banner p { grid-area:2 / 2 / 3 / 3; max-width:78ch; margin-top:2px; }
+  .empty-state.is-banner .acts { grid-area:1 / 3 / 3 / 4; justify-content:flex-end; margin-top:0; }
+  /* Below the fold it stops being a banner and goes back to a stack, because a
+     three-column row at 380px is three columns of one word each. */
+  @media (max-width:640px) {
+    .empty-state.is-banner { grid-template-columns:auto minmax(0,1fr); }
+    .empty-state.is-banner .acts { grid-area:3 / 1 / 4 / 3; justify-content:flex-start; margin-top:12px; }
+  }
+
   /* ══ Skeletons — added 2026-08-19 ══════════════════════════════════════
      The suite had no loading vocabulary at all. sales showed the word
      "Henter…" in faint grey on thirteen screens and nothing on two more; ops
