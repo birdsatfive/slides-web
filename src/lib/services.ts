@@ -1,12 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BookMarked,
   Briefcase,
-  CalendarDays,
-  LayoutDashboard,
   LineChart,
   Link2,
   Sparkles,
+  SquareKanban,
 } from "lucide-react";
 
 export interface BafService {
@@ -22,19 +20,11 @@ export interface BafService {
 export const BAF_SERVICES: BafService[] = [
   {
     id: "ops",
-    name: "Ops",
+    name: "Operations",
     description: "Projects, dashboards, team",
     url: "https://ops.birdsatfive.dk",
-    icon: LayoutDashboard,
+    icon: SquareKanban,
     accent: "#F58ED3",
-  },
-  {
-    id: "booking",
-    name: "Room Booking",
-    description: "Meeting rooms at the Garage",
-    url: "https://booking.birdsatfive.dk",
-    icon: CalendarDays,
-    accent: "#D159A3",
   },
   {
     id: "sales",
@@ -68,13 +58,5 @@ export const BAF_SERVICES: BafService[] = [
     url: "https://baf.birdie.studio",
     icon: Sparkles,
     accent: "#F58ED3",
-  },
-  {
-    id: "skills",
-    name: "Skills Library",
-    description: "Shared Claude Code skills",
-    url: "https://ops.birdsatfive.dk/skills",
-    icon: BookMarked,
-    accent: "#7c2a6b",
   },
 ];
