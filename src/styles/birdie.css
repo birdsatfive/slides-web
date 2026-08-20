@@ -771,7 +771,14 @@ body::before {
      instead put an 800px hole between "Køen er tom" and the only button that
      acts on it, in a full-bleed card — two halves of one message too far apart
      to read as one. A banner is a sentence with a button on the end of it. */
-  .empty-state.is-banner { display:grid; grid-template-columns:auto auto minmax(0,1fr);
+  /* Columns are `auto | 1fr | auto`, and that middle `1fr` is load-bearing.
+     It used to be `auto auto minmax(0,1fr)`: the TEXT column was `auto` and
+     the ACTIONS column was the flexible one, so a paragraph of any length ate
+     the row and squeezed the action to nothing — "Mark the current moment"
+     rendered as three stacked words in a 60px column. The way out of an empty
+     state is the part of it that matters (§4.15), so it is the text that
+     flexes and the action that keeps its width. */
+  .empty-state.is-banner { display:grid; grid-template-columns:auto minmax(0,1fr) auto;
     align-items:center; text-align:left; gap:2px 15px; padding:15px 17px; }
   .card > .empty-state.is-banner { padding:15px 17px; }
   .empty-state.is-banner .ico { grid-area:1 / 1 / 3 / 2; width:38px; height:38px;
@@ -779,8 +786,9 @@ body::before {
   .empty-state.is-banner .ico svg { width:17px; height:17px; }
   .empty-state.is-banner h3 { grid-area:1 / 2 / 2 / 3; }
   .empty-state.is-banner p { grid-area:2 / 2 / 3 / 3; max-width:78ch; margin-top:2px; }
-  .empty-state.is-banner .acts { grid-area:1 / 3 / 3 / 4; justify-content:flex-start;
-    margin-top:0; margin-left:6px; }
+  .empty-state.is-banner .acts { grid-area:1 / 3 / 3 / 4; justify-content:flex-end;
+    flex-wrap:nowrap; margin-top:0; margin-left:6px; }
+  .empty-state.is-banner .acts > * { white-space:nowrap; }
   /* Below the fold it stops being a banner and goes back to a stack, because a
      three-column row at 380px is three columns of one word each. */
   @media (max-width:640px) {
@@ -969,7 +977,10 @@ body::before {
   .card-head[data-busy="true"] .ai-sigil { animation:aiBreath 2.2s var(--ease) infinite; }
 
   .exec { font-size:14.5px; line-height:1.6; color:var(--ink); }
-  .ai-listen { display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--maroon); }
+  /* `--ai-ink` rather than `--maroon`: §2 marks the maroon as legacy, kept only
+     so old callsites resolve, and names `--ai-ink` as the accent-as-text. This
+     was the last rule in the file still reading the legacy name. */
+  .ai-listen { display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--ai-ink); }
   .ai-listen .wave { display:inline-flex; align-items:flex-end; gap:2px; height:13px; }
   .ai-listen .wave i { width:2px; border-radius:99px; background:linear-gradient(180deg,#F58ED3,#C72886 46%,#510742); animation:aiWave 1s var(--ease) infinite; }
   .ai-listen .wave i:nth-child(2){ animation-delay:.15s; } .ai-listen .wave i:nth-child(3){ animation-delay:.3s; }
@@ -993,7 +1004,11 @@ body::before {
   @keyframes livePulse { 0%{box-shadow:0 0 0 0 rgba(158,61,84,.5)} 70%{box-shadow:0 0 0 7px rgba(158,61,84,0)} 100%{box-shadow:0 0 0 0 rgba(158,61,84,0)} }
   .orb { position:relative; width:180px; height:180px; display:grid; place-items:center; margin-bottom:6px; }
   .orb .core { width:104px; height:104px; border-radius:50%; background:var(--ai-grad); display:grid; place-items:center;
-    box-shadow:0 14px 50px rgba(163,50,120,.42), inset 0 2px 10px rgba(255,255,255,.45); animation:orbBreath 3.2s ease-in-out infinite; z-index:2; }
+    box-shadow:0 14px 50px rgba(199,40,134,.38), inset 0 2px 10px rgba(255,255,255,.45); animation:orbBreath 3.2s ease-in-out infinite; z-index:2; }
+  /* `rgba(163,50,120,.42)` was `#A33278`, the retired finance accent, written as
+     a decimal triplet — so it survived both sweeps of that colour because every
+     sweep grepped the hex.  §8.13, in the file that documents §8.13.  It is the
+     gradient's own magenta `#C72886` now, which is what the orb is made of. */
   .orb .core svg { width:36px; height:36px; color:#fff; }
   .orb .ring-pulse { position:absolute; border-radius:50%; border:1.5px solid rgba(245,142,211,.45); animation:orbPulse 3.2s ease-out infinite; }
   .orb .ring-pulse:nth-child(2){ animation-delay:1.05s; } .orb .ring-pulse:nth-child(3){ animation-delay:2.1s; }
@@ -1003,14 +1018,22 @@ body::before {
   .lede { font-size:18px; line-height:1.45; color:var(--ink); font-weight:500; letter-spacing:-.2px; }
   .lede.karaoke .w { color:var(--faint); transition:color .12s, text-shadow .12s; }
   .lede .w.on { color:var(--ink); text-shadow:0 0 12px rgba(245,142,211,.45); }
+  /* Plum, not pink.  A seek chip is a control a PERSON operates — "play the
+     recording from here" — and R1 reserves pink for model output nobody has
+     accepted yet.  This module was written before that rule hardened, and on a
+     summary tab with a timestamp per decision, topic, quote and highlight it
+     put a dozen pink pills on screen, none of which a model wrote.  Changed
+     2026-08-20; the recorder is the only consumer of this module. */
   .seekchip { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:500; font-variant-numeric:tabular-nums;
-    color:var(--plum); background:rgba(245,142,211,.12); border-radius:7px; padding:2px 8px; border:1px solid transparent; transition:.15s; }
-  .seekchip:hover { background:rgba(245,142,211,.22); }
+    color:var(--plum); background:rgba(94,8,66,.075); border-radius:7px; padding:2px 8px; border:1px solid transparent; transition:.15s; }
+  .seekchip:hover { background:rgba(94,8,66,.13); }
   .seekchip svg { width:11px; height:11px; }
   .seg { display:flex; gap:12px; padding:11px 10px; border-radius:12px; transition:.18s; position:relative; }
   .seg:hover { background:var(--card-soft); }
-  .seg.active { background:rgba(245,142,211,.07); }
-  .seg.active::before { content:""; position:absolute; left:0; top:8px; bottom:8px; width:2px; border-radius:2px; background:var(--pink); }
+  /* Also plum: `.seg.active` is the segment the audio is PLAYING, a position in
+     a recording, not a passage a model produced.  Same reason as `.seekchip`. */
+  .seg.active { background:rgba(94,8,66,.045); }
+  .seg.active::before { content:""; position:absolute; left:0; top:8px; bottom:8px; width:2px; border-radius:2px; background:var(--plum); }
   .seg .stext { font-size:14px; line-height:1.55; color:var(--muted-foreground); }
   .seg.active .stext { color:var(--ink); }
   .airow { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-top:1px solid var(--line); }
