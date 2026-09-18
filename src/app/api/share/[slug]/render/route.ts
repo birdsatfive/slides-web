@@ -65,7 +65,10 @@ export async function GET(
   if (meta.kind === "html_bundle") {
     const entry = typeof meta.entry === "string" && meta.entry ? meta.entry : "index.html";
     const target = `/api/share/${slug}/f/${entry}${pw ? `?pw=${encodeURIComponent(pw)}` : ""}`;
-    return NextResponse.redirect(new URL(target, request.url), 307);
+    // Relative on purpose: behind the proxy `request.url` is the container's
+    // bind address, so an absolute URL built from it sent people to
+    // https://0.0.0.0:3000. A relative Location stays on the host they asked.
+    return new NextResponse(null, { status: 307, headers: { Location: target } });
   }
 
   // Share-only PDFs: emit a tiny HTML wrapper that embeds the PDF via the
