@@ -64,7 +64,7 @@ export default async function SharedFilePage({ params }: { params: Promise<{ id:
   const { data: comments } = await supabase
     .schema("slides")
     .from("comments")
-    .select("id, author_name, body, created_at")
+    .select("id, slide_id, author_name, body, created_at")
     .eq("deck_id", id)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -153,6 +153,11 @@ export default async function SharedFilePage({ params }: { params: Promise<{ id:
               <li key={c.id} className="panel-card p-3">
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-[12px] font-medium">{c.author_name}</span>
+                  {c.slide_id && (
+                    <span className="text-[10px] uppercase tracking-wider text-foreground/40">
+                      Slide {c.slide_id}
+                    </span>
+                  )}
                   <span className="text-[10px] text-foreground/40">
                     {new Date(c.created_at).toLocaleString()}
                   </span>

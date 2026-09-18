@@ -9,6 +9,7 @@ import {
   safeRelPath,
   sharePasswordCookie,
 } from "@/lib/share/access";
+import { withSlideBridge } from "@/lib/share/slide-bridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,7 +79,12 @@ export async function GET(
   // requests for its own files then count as cross-origin. Isolating this on
   // a separate host is the fix that does not cost the render.
 
-  const response = new NextResponse(download.data, { status: 200, headers });
+  // HTML pages carry the slide bridge so comments land on the slide shown.
+  const body = contentType.startsWith("text/html")
+    ? withSlideBridge(await download.data.text())
+    : download.data;
+
+  const response = new NextResponse(body, { status: 200, headers });
 
   // The password rides the query string only on the entry request. Persist it
   // so the relative asset and sub-page requests that follow stay authorised.

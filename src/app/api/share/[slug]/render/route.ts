@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
+import { withSlideBridge } from "@/lib/share/slide-bridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,7 +84,7 @@ export async function GET(
     return NextResponse.json({ error: error?.message ?? "download failed" }, { status: 502 });
   }
 
-  const html = await blob.text();
+  const html = withSlideBridge(await blob.text());
 
   return new NextResponse(html, {
     status: 200,
